@@ -1,0 +1,44 @@
+# This file provides instructions to web crawlers about which parts of the website
+# should be crawled and indexed, ensuring sensitive healthcare financial data is protected.
+
+# Rules for all web crawlers
+User-agent: *
+# Protect sensitive application areas
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /claims/
+Disallow: /billing/
+Disallow: /payments/
+Disallow: /reports/
+Disallow: /settings/
+Disallow: /profile/
+Disallow: /clients/
+# Allow access to public-facing content
+Allow: /
+Allow: /login
+Allow: /forgot-password
+Allow: /help/
+Allow: /assets/
+
+# Specific rules for Googlebot (same as general rules)
+User-agent: Googlebot
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /claims/
+Disallow: /billing/
+Disallow: /payments/
+Disallow: /reports/
+Disallow: /settings/
+Disallow: /profile/
+Disallow: /clients/
+Allow: /
+Allow: /login
+Allow: /forgot-password
+Allow: /help/
+Allow: /assets/
+
+# Add a crawl delay to reduce server load
+Crawl-delay: 10
+
+# Reference to sitemap
+Sitemap: https://example.com/sitemap.xml
