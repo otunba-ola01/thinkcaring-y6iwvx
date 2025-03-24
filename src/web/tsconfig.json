@@ -1,0 +1,62 @@
+{
+  "compilerOptions": {
+    /* Basic Options */
+    "target": "ES2022",                      /* Specify ECMAScript target version: ES2022 for modern browser support */
+    "lib": ["dom", "dom.iterable", "esnext"], /* Specify library files to be included in the compilation */
+    "allowJs": true,                          /* Allow JavaScript files to be compiled */
+    "skipLibCheck": true,                     /* Skip type checking of declaration files */
+    "strict": true,                           /* Enable all strict type-checking options for financial data safety */
+    "forceConsistentCasingInFileNames": true, /* Ensure consistent casing in file names */
+    "noEmit": true,                           /* Do not emit outputs since Next.js handles this */
+    "esModuleInterop": true,                  /* Enables emit interoperability between CommonJS and ES Modules */
+    "module": "esnext",                       /* Specify module code generation: ESNext for Next.js compatibility */
+    "moduleResolution": "node",               /* Resolve modules using Node.js style */
+    "resolveJsonModule": true,                /* Include modules imported with .json extension */
+    "isolatedModules": true,                  /* Transpile each file as a separate module */
+    "jsx": "preserve",                        /* Preserve JSX for Next.js transformation */
+    "incremental": true,                      /* Enable incremental compilation for faster builds */
+    
+    /* Path Configuration */
+    "baseUrl": "./src",                       /* Base directory to resolve non-relative module names */
+    "paths": {                                /* Map aliases to relative paths */
+      "@/*": ["*"],                           /* Root alias for any file in src */
+      "@components/*": ["components/*"],      /* Component directory alias */
+      "@hooks/*": ["hooks/*"],                /* Hooks directory alias */
+      "@utils/*": ["utils/*"],                /* Utilities directory alias */
+      "@styles/*": ["styles/*"],              /* Styles directory alias */
+      "@api/*": ["api/*"],                    /* API directory alias */
+      "@store/*": ["store/*"],                /* State management directory alias */
+      "@types/*": ["types/*"],                /* Types directory alias */
+      "@constants/*": ["constants/*"],        /* Constants directory alias */
+      "@config/*": ["config/*"],              /* Configuration directory alias */
+      "@context/*": ["context/*"]             /* Context API directory alias */
+    },
+    
+    /* Plugins */
+    "plugins": [
+      { "name": "next" }                      /* Next.js TypeScript plugin for enhanced type checking */
+    ],
+    
+    /* Type Declaration Files */
+    "typeRoots": [
+      "./node_modules/@types",                /* Standard type declarations */
+      "./src/types"                           /* Custom type declarations */
+    ]
+  },
+  "include": [
+    "next-env.d.ts",                          /* Next.js type definitions */
+    "**/*.ts",                                /* All TypeScript files */
+    "**/*.tsx",                               /* All TypeScript React files */
+    ".next/types/**/*.ts"                     /* Next.js generated types */
+  ],
+  "exclude": [
+    "node_modules",                           /* Exclude node_modules for performance */
+    ".next",                                  /* Exclude Next.js build directory */
+    "out",                                    /* Exclude production build directory */
+    "cypress",                                /* Exclude Cypress test files */
+    "**/*.spec.ts",                           /* Exclude test files */
+    "**/*.test.ts",                           /* Exclude test files */
+    "**/*.spec.tsx",                          /* Exclude React test files */
+    "**/*.test.tsx"                           /* Exclude React test files */
+  ]
+}
