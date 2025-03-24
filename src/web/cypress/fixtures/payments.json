@@ -1,0 +1,406 @@
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Between, Like, In } from 'typeorm';
+import { Payment } from '../entities/payment.entity';
+import { ClaimPayment } from '../entities/claim-payment.entity';
+import { RemittanceInfo } from '../entities/remittance-info.entity';
+import { PaymentAdjustment } from '../entities/payment-adjustment.entity';
+import { Claim } from '../entities/claim.entity';
+import { Payer } from '../entities/payer.entity';
+import { Program } from '../entities/program.entity';
+import { 
+  CreatePaymentDto, 
+  UpdatePaymentDto, 
+  ReconcilePaymentDto,
+  PartialReconcilePaymentDto,
+  ImportRemittanceDto,
+  PaymentFilterDto 
+} from '../dto/payment.dto';
+import { PaginationDto } from '../dto/pagination.dto';
+import { RemittanceProcessingService } from './remittance-processing.service';
+import { PaymentMetricsService } from './payment-metrics.service';
+import { Logger } from '@nestjs/common';
+
+@Injectable()
+export class PaymentService {
+  private readonly logger = new Logger(PaymentService.name);
+
+  constructor(
+    @InjectRepository(Payment)
+    private paymentRepository: Repository<Payment>,
+    @InjectRepository(ClaimPayment)
+    private claimPaymentRepository: Repository<ClaimPayment>,
+    @InjectRepository(RemittanceInfo)
+    private remittanceInfoRepository: Repository<RemittanceInfo>,
+    @InjectRepository(PaymentAdjustment)
+    private paymentAdjustmentRepository: Repository<PaymentAdjustment>,
+    @InjectRepository(Claim)
+    private claimRepository: Repository<Claim>,
+    @InjectRepository(Payer)
+    private payerRepository: Repository<Payer>,
+    @InjectRepository(Program)
+    private programRepository: Repository<Program>,
+    private remittanceProcessingService: RemittanceProcessingService,
+    private paymentMetricsService: PaymentMetricsService,
+  ) {}
+
+  /**
+   * Get paginated list of payments with filtering options
+   */
+  async findAll(
+    filters: PaymentFilterDto,
+    pagination: PaginationDto
+  ): Promise<{ data: Payment[], meta: any }> {
+    const { page = 1, pageSize = 10 } = pagination;
+    const { status, dateRange, payerId, search } = filters;
+
+    const queryBuilder = this.paymentRepository
+      .createQueryBuilder('payment')
+      .leftJoinAndSelect('payment.payer', 'payer')
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .orderBy('payment.paymentDate', 'DESC');
+
+    if (status) {
+      queryBuilder.andWhere('payment.reconciliationStatus = :status', { status });
+    }
+
+    if (dateRange?.start && dateRange?.end) {
+      queryBuilder.andWhere('payment.paymentDate BETWEEN :start AND :end', {
+        start: dateRange.start,
+        end: dateRange.end,
+      });
+    }
+
+    if (payerId) {
+      queryBuilder.andWhere('payment.payerId = :payerId', { payerId });
+    }
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(payment.referenceNumber LIKE :search OR payment.checkNumber LIKE :search OR payer.name LIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    const [payments, totalItems] = await queryBuilder.getManyAndCount();
+
+    // Get claim count for each payment
+    const paymentsWithClaimCount = await Promise.all(
+      payments.map(async (payment) => {
+        const claimCount = await this.claimPaymentRepository.count({
+          where: { paymentId: payment.id },
+        });
+        return {
+          ...payment,
+          claimCount,
+        };
+      })
+    );
+
+    return {
+      data: paymentsWithClaimCount,
+      meta: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages: Math.ceil(totalItems / pageSize),
+      },
+    };
+  }
+
+  /**
+   * Get a single payment by ID with all related entities
+   */
+  async findOne(id: string): Promise<Payment> {
+    const payment = await this.paymentRepository.findOne({
+      where: { id },
+      relations: ['payer', 'claimPayments', 'claimPayments.claim', 'claimPayments.adjustments', 'remittanceInfo'],
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Payment with ID ${id} not found`);
+    }
+
+    return payment;
+  }
+
+  /**
+   * Create a new payment record
+   */
+  async create(createPaymentDto: CreatePaymentDto): Promise<Payment> {
+    const payer = await this.payerRepository.findOne({
+      where: { id: createPaymentDto.payerId },
+    });
+
+    if (!payer) {
+      throw new NotFoundException(`Payer with ID ${createPaymentDto.payerId} not found`);
+    }
+
+    const payment = this.paymentRepository.create({
+      ...createPaymentDto,
+      payer,
+      reconciliationStatus: 'UNRECONCILED',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    this.logger.log(`Creating new payment for ${payer.name} with amount ${createPaymentDto.paymentAmount}`);
+    return this.paymentRepository.save(payment);
+  }
+
+  /**
+   * Update an existing payment record
+   */
+  async update(id: string, updatePaymentDto: UpdatePaymentDto): Promise<Payment> {
+    const payment = await this.paymentRepository.findOne({
+      where: { id },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Payment with ID ${id} not found`);
+    }
+
+    let payer = payment.payer;
+    if (updatePaymentDto.payerId && updatePaymentDto.payerId !== payment.payerId) {
+      payer = await this.payerRepository.findOne({
+        where: { id: updatePaymentDto.payerId },
+      });
+
+      if (!payer) {
+        throw new NotFoundException(`Payer with ID ${updatePaymentDto.payerId} not found`);
+      }
+    }
+
+    const updatedPayment = {
+      ...payment,
+      ...updatePaymentDto,
+      payer,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.logger.log(`Updating payment ${id} with new amount ${updatePaymentDto.paymentAmount}`);
+    return this.paymentRepository.save(updatedPayment);
+  }
+
+  /**
+   * Reconcile a payment with claims
+   */
+  async reconcilePayment(id: string, reconcilePaymentDto: ReconcilePaymentDto): Promise<any> {
+    const payment = await this.findOne(id);
+
+    if (payment.reconciliationStatus === 'RECONCILED') {
+      throw new BadRequestException(`Payment with ID ${id} is already reconciled`);
+    }
+
+    this.logger.log(`Reconciling payment ${id} with ${reconcilePaymentDto.claimPayments.length} claims`);
+
+    // Process claim payments
+    const claimPayments = await Promise.all(
+      reconcilePaymentDto.claimPayments.map(async (cp) => {
+        const claim = await this.claimRepository.findOne({
+          where: { id: cp.claimId },
+        });
+
+        if (!claim) {
+          throw new NotFoundException(`Claim with ID ${cp.claimId} not found`);
+        }
+
+        const previousStatus = claim.claimStatus;
+        
+        // Update claim status to PAID
+        await this.claimRepository.update(cp.claimId, {
+          claimStatus: 'PAID',
+          updatedAt: new Date().toISOString(),
+        });
+
+        // Create claim payment
+        const claimPayment = this.claimPaymentRepository.create({
+          paymentId: id,
+          claimId: cp.claimId,
+          paidAmount: cp.amount,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+
+        const savedClaimPayment = await this.claimPaymentRepository.save(claimPayment);
+
+        // Create adjustments if any
+        if (cp.adjustments && cp.adjustments.length > 0) {
+          for (const adj of cp.adjustments) {
+            const adjustment = this.paymentAdjustmentRepository.create({
+              claimPaymentId: savedClaimPayment.id,
+              adjustmentType: adj.adjustmentType,
+              adjustmentCode: adj.adjustmentCode,
+              adjustmentAmount: adj.adjustmentAmount,
+              description: adj.description,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+            await this.paymentAdjustmentRepository.save(adjustment);
+          }
+        }
+
+        // Return updated claim status
+        return {
+          ...savedClaimPayment,
+          claim,
+          adjustments: cp.adjustments || [],
+          previousStatus,
+        };
+      })
+    );
+
+    // Calculate amounts
+    const totalAmount = payment.paymentAmount;
+    const matchedAmount = claimPayments.reduce((sum, cp) => sum + cp.paidAmount, 0);
+    const unmatchedAmount = totalAmount - matchedAmount;
+
+    // Determine reconciliation status
+    const reconciliationStatus = Math.abs(unmatchedAmount) < 0.01 ? 'RECONCILED' : 'PARTIALLY_RECONCILED';
+
+    // Update payment
+    await this.paymentRepository.update(id, {
+      reconciliationStatus,
+      notes: reconcilePaymentDto.notes || payment.notes,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Get updated payment
+    const updatedPayment = await this.findOne(id);
+
+    // Return reconciliation result
+    return {
+      payment: updatedPayment,
+      claimPayments,
+      totalAmount,
+      matchedAmount,
+      unmatchedAmount,
+      reconciliationStatus,
+      updatedClaims: claimPayments.map((cp) => ({
+        claimId: cp.claimId,
+        previousStatus: cp.previousStatus,
+        newStatus: 'PAID',
+      })),
+    };
+  }
+
+  /**
+   * Partially reconcile a payment with specific claims
+   */
+  async partialReconcilePayment(id: string, partialReconcilePaymentDto: PartialReconcilePaymentDto): Promise<any> {
+    this.logger.log(`Partially reconciling payment ${id} with ${partialReconcilePaymentDto.claimPayments.length} claims`);
+    return this.reconcilePayment(id, partialReconcilePaymentDto as ReconcilePaymentDto);
+  }
+
+  /**
+   * Import and process a remittance file
+   */
+  async importRemittance(importRemittanceDto: ImportRemittanceDto): Promise<any> {
+    const payer = await this.payerRepository.findOne({
+      where: { id: importRemittanceDto.payerId },
+    });
+
+    if (!payer) {
+      throw new NotFoundException(`Payer with ID ${importRemittanceDto.payerId} not found`);
+    }
+
+    this.logger.log(`Importing ${importRemittanceDto.fileType} remittance file for payer ${payer.name}`);
+    
+    // Defer to remittance processing service which handles the file parsing logic
+    return this.remittanceProcessingService.processRemittanceFile(importRemittanceDto, payer);
+  }
+
+  /**
+   * Get payment metrics for reporting and analytics
+   */
+  async getPaymentMetrics(dateRange?: { start: string; end: string }): Promise<any> {
+    return this.paymentMetricsService.getPaymentMetrics(dateRange);
+  }
+
+  /**
+   * Get accounts receivable aging report
+   */
+  async getAccountsReceivableAging(asOfDate?: string): Promise<any> {
+    return this.paymentMetricsService.getAccountsReceivableAging(asOfDate);
+  }
+
+  /**
+   * Get suggested claim matches for a payment based on remittance information
+   */
+  async getSuggestedClaimMatches(id: string): Promise<any> {
+    const payment = await this.findOne(id);
+    
+    if (!payment) {
+      throw new NotFoundException(`Payment with ID ${id} not found`);
+    }
+
+    // If payment has remittance info, use it to find matching claims
+    if (payment.remittanceInfo) {
+      return this.remittanceProcessingService.findMatchingClaims(payment);
+    }
+    
+    // Otherwise, use heuristics to suggest matches based on payment info
+    const possibleClaims = await this.claimRepository.find({
+      where: {
+        payerId: payment.payerId,
+        claimStatus: In(['SUBMITTED', 'PENDING']),
+      },
+      take: 10,
+      order: {
+        submissionDate: 'ASC',
+      },
+    });
+
+    this.logger.log(`Found ${possibleClaims.length} potential claim matches for payment ${id}`);
+
+    return {
+      payment,
+      suggestedMatches: possibleClaims.map(claim => ({
+        claimId: claim.id,
+        claimNumber: claim.claimNumber,
+        clientName: claim.clientName,
+        serviceDate: claim.serviceStartDate,
+        billedAmount: claim.totalAmount,
+        suggestedAmount: claim.totalAmount,
+        confidence: 0.75, // Default confidence without remittance data
+      })),
+    };
+  }
+
+  /**
+   * Void a payment that was created in error
+   */
+  async voidPayment(id: string, reason: string): Promise<Payment> {
+    const payment = await this.findOne(id);
+    
+    if (!payment) {
+      throw new NotFoundException(`Payment with ID ${id} not found`);
+    }
+
+    if (payment.reconciliationStatus === 'RECONCILED') {
+      throw new BadRequestException("Cannot void a reconciled payment");
+    }
+
+    // If there are any claim payments, remove the associations
+    if (payment.claimPayments?.length > 0) {
+      await this.claimPaymentRepository.remove(payment.claimPayments);
+      
+      // Update claims back to their previous status
+      for (const claimPayment of payment.claimPayments) {
+        await this.claimRepository.update(claimPayment.claimId, {
+          claimStatus: 'PENDING',
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    // Update payment status to VOIDED
+    payment.reconciliationStatus = 'VOIDED';
+    payment.notes = payment.notes ? `${payment.notes}\nVOIDED: ${reason}` : `VOIDED: ${reason}`;
+    payment.updatedAt = new Date().toISOString();
+
+    this.logger.log(`Voiding payment ${id} with reason: ${reason}`);
+    return this.paymentRepository.save(payment);
+  }
+}
