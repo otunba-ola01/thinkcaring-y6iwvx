@@ -1,0 +1,352 @@
+/**
+ * HCBS Revenue Management System
+ * Print Stylesheet
+ * 
+ * This stylesheet defines styles specific to print media, ensuring that
+ * printed reports, claims, and financial documents are formatted optimally
+ * with only the necessary content visible.
+ */
+
+@import './globals.css';
+
+/**
+ * Print-only elements (hidden during normal viewing)
+ */
+.print-only {
+  display: none;
+}
+
+/**
+ * Page break indicators (hidden during normal viewing)
+ */
+.page-break {
+  display: none;
+}
+
+/**
+ * Page setup - Define default page size and margins
+ */
+@page {
+  size: letter;
+  margin: 0.5in;
+}
+
+/**
+ * First page may need a larger top margin for letterhead
+ */
+@page :first {
+  margin-top: 1in;
+}
+
+/**
+ * Print media styles - Applied only when printing
+ */
+@media print {
+  /* Base print styles */
+  body {
+    background-color: #ffffff;
+    color: #000000;
+    font-size: 12pt;
+    line-height: 1.5;
+    font-family: var(--font-inter);
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Headings */
+  h1, h2, h3, h4, h5, h6 {
+    color: #000000;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  h1 {
+    font-size: 18pt;
+  }
+
+  h2 {
+    font-size: 16pt;
+  }
+
+  h3 {
+    font-size: 14pt;
+  }
+
+  h4, h5, h6 {
+    font-size: 12pt;
+  }
+
+  /* Content elements */
+  p, ul, ol, dl, table {
+    page-break-inside: avoid;
+  }
+
+  /* Tables */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  table, th, td {
+    border: 1px solid #000000;
+  }
+
+  th, td {
+    padding: 8pt;
+    text-align: left;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  /* Links - don't show URLs */
+  a {
+    color: #000000;
+    text-decoration: none;
+  }
+
+  a[href]:after {
+    content: none;
+  }
+
+  /* Images */
+  img {
+    max-width: 100% !important;
+  }
+
+  /* Layout adjustments */
+  .container {
+    max-width: 100%;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Page break controls */
+  .page-break {
+    page-break-before: always;
+    display: block;
+  }
+
+  .no-page-break {
+    page-break-inside: avoid;
+  }
+
+  /* Hide elements not needed for printing */
+  .no-print, .no-print * {
+    display: none !important;
+  }
+
+  /* Show print-only elements */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Hide navigation and UI controls */
+  header, footer, nav, .sidebar, .topbar, .mobile-navigation, 
+  .action-button-text, .tabs, .filter-panel, .pagination, .search-input {
+    display: none !important;
+  }
+
+  /* Main content adjustments */
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Cards and containers */
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #000000 !important;
+    break-inside: avoid;
+  }
+
+  .card-header {
+    background-color: #f5f5f5 !important;
+  }
+
+  /* Data tables */
+  .data-table-container {
+    box-shadow: none !important;
+    border: 1px solid #000000 !important;
+  }
+
+  .data-table th {
+    background-color: #f5f5f5 !important;
+    color: #000000 !important;
+  }
+
+  .data-table tr:nth-child(even) {
+    background-color: #f9f9f9 !important;
+  }
+
+  /* Status badges for black and white printing */
+  .status-badge {
+    border: 1px solid #000000 !important;
+    background-color: transparent !important;
+    color: #000000 !important;
+    font-weight: bold !important;
+  }
+
+  .status-badge-draft::before {
+    content: "Draft";
+    font-weight: bold;
+  }
+
+  .status-badge-submitted::before {
+    content: "Submitted";
+    font-weight: bold;
+  }
+
+  .status-badge-pending::before {
+    content: "Pending";
+    font-weight: bold;
+  }
+
+  .status-badge-paid::before {
+    content: "Paid";
+    font-weight: bold;
+  }
+
+  .status-badge-denied::before {
+    content: "Denied";
+    font-weight: bold;
+  }
+
+  .status-badge-complete::before {
+    content: "Complete";
+    font-weight: bold;
+  }
+
+  .status-badge-incomplete::before {
+    content: "Incomplete";
+    font-weight: bold;
+  }
+
+  .status-badge-reconciled::before {
+    content: "Reconciled";
+    font-weight: bold;
+  }
+
+  .status-badge-unreconciled::before {
+    content: "Unreconciled";
+    font-weight: bold;
+  }
+
+  /* Charts and metrics formatting */
+  .chart-container {
+    page-break-inside: avoid;
+    max-height: 300pt !important;
+  }
+
+  .metric-card {
+    border: 1px solid #000000 !important;
+    break-inside: avoid;
+    padding: 10pt !important;
+  }
+
+  .metric-value {
+    font-size: 16pt !important;
+    font-weight: bold !important;
+  }
+
+  .metric-label {
+    font-size: 10pt !important;
+  }
+
+  .metric-trend-up::before {
+    content: "↑";
+    margin-right: 4pt;
+  }
+
+  .metric-trend-down::before {
+    content: "↓";
+    margin-right: 4pt;
+  }
+
+  /* Claim and payment detail formatting */
+  .claim-detail-header {
+    border-bottom: 2pt solid #000000;
+    margin-bottom: 10pt;
+    padding-bottom: 10pt;
+  }
+
+  .claim-timeline {
+    display: none !important;
+  }
+
+  .claim-timeline-print {
+    display: block !important;
+    margin: 10pt 0;
+  }
+
+  .claim-timeline-print-item {
+    margin-bottom: 5pt;
+  }
+
+  .payment-detail-header {
+    border-bottom: 2pt solid #000000;
+    margin-bottom: 10pt;
+    padding-bottom: 10pt;
+  }
+
+  /* Report-specific formatting */
+  .report-header {
+    text-align: center;
+    margin-bottom: 15pt;
+  }
+
+  .report-title {
+    font-size: 18pt;
+    font-weight: bold;
+    margin-bottom: 5pt;
+  }
+
+  .report-subtitle {
+    font-size: 12pt;
+    margin-bottom: 10pt;
+  }
+
+  .report-date-range {
+    font-size: 10pt;
+    margin-bottom: 15pt;
+  }
+
+  .report-footer {
+    text-align: center;
+    font-size: 8pt;
+    margin-top: 15pt;
+    border-top: 1pt solid #000000;
+    padding-top: 5pt;
+  }
+
+  .report-page-number::after {
+    content: "Page " counter(page) " of " counter(pages);
+  }
+
+  /* Organization branding and watermark */
+  .print-logo {
+    display: block !important;
+    max-height: 50pt;
+    margin-bottom: 10pt;
+  }
+
+  .print-organization-info {
+    display: block !important;
+    font-size: 10pt;
+    margin-bottom: 15pt;
+  }
+
+  .print-watermark {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 48pt;
+    color: rgba(0, 0, 0, 0.1);
+    z-index: -1;
+    white-space: nowrap;
+  }
+}
