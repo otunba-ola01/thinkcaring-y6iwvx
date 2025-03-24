@@ -1,0 +1,310 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+  labels:
+    app: alertmanager
+    component: monitoring
+    part-of: hcbs-revenue-management
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+      smtp_from: 'alertmanager@hcbs-revenue-management.com'
+      smtp_smarthost: 'smtp-server:587'
+      smtp_auth_username: '${SMTP_USERNAME}'
+      smtp_auth_password: '${SMTP_PASSWORD}'
+      smtp_require_tls: true
+      pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+    templates:
+      - '/etc/alertmanager/templates/*.tmpl'
+
+    route:
+      receiver: 'default-receiver'
+      group_by: ['alertname', 'job', 'severity']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        - match:
+            severity: critical
+          receiver: 'pagerduty-critical'
+          group_wait: 30s
+          repeat_interval: 1h
+        - match:
+            severity: high
+          receiver: 'email-sms-high'
+          group_wait: 1m
+          repeat_interval: 2h
+        - match:
+            severity: medium
+          receiver: 'email-medium'
+          group_wait: 2m
+          repeat_interval: 4h
+        - match:
+            severity: low
+          receiver: 'email-low'
+          group_wait: 5m
+          repeat_interval: 12h
+        - match:
+            category: security
+          receiver: 'security-team'
+          group_wait: 1m
+          repeat_interval: 2h
+
+    inhibit_rules:
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'high'
+        equal: ['alertname', 'cluster', 'service']
+      - source_match:
+          severity: 'high'
+        target_match:
+          severity: 'medium'
+        equal: ['alertname', 'cluster', 'service']
+      - source_match:
+          severity: 'medium'
+        target_match:
+          severity: 'low'
+        equal: ['alertname', 'cluster', 'service']
+
+    receivers:
+      - name: 'default-receiver'
+        email_configs:
+          - to: 'monitoring-team@hcbs-revenue-management.com'
+            send_resolved: true
+      - name: 'pagerduty-critical'
+        pagerduty_configs:
+          - service_key: '${PAGERDUTY_SERVICE_KEY}'
+            send_resolved: true
+            severity: 'critical'
+            description: '{{ template "pagerduty.default.description" . }}'
+            details:
+              severity: '{{ .CommonLabels.severity }}'
+              summary: '{{ .CommonAnnotations.summary }}'
+              runbook_url: '{{ .CommonAnnotations.runbook_url }}'
+      - name: 'email-sms-high'
+        email_configs:
+          - to: 'service-team@hcbs-revenue-management.com'
+            send_resolved: true
+        webhook_configs:
+          - url: 'http://sms-gateway:8080/send'
+            send_resolved: true
+      - name: 'email-medium'
+        email_configs:
+          - to: 'development-team@hcbs-revenue-management.com'
+            send_resolved: true
+      - name: 'email-low'
+        email_configs:
+          - to: 'monitoring-team@hcbs-revenue-management.com'
+            send_resolved: true
+      - name: 'security-team'
+        email_configs:
+          - to: 'security-team@hcbs-revenue-management.com'
+            send_resolved: true
+        pagerduty_configs:
+          - service_key: '${PAGERDUTY_SECURITY_KEY}'
+            send_resolved: true
+            severity: 'high'
+            description: 'Security Alert: {{ .CommonAnnotations.summary }}'
+            details:
+              severity: '{{ .CommonLabels.severity }}'
+              summary: '{{ .CommonAnnotations.summary }}'
+              runbook_url: '{{ .CommonAnnotations.runbook_url }}'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-templates
+  namespace: monitoring
+  labels:
+    app: alertmanager
+    component: monitoring
+    part-of: hcbs-revenue-management
+data:
+  default.tmpl: |
+    {{ define "__alertmanager" }}AlertManager{{ end }}
+    {{ define "__alertmanagerURL" }}{{ .ExternalURL }}/#/alerts?receiver={{ .Receiver | urlquery }}{{ end }}
+
+    {{ define "__subject" }}[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.SortedPairs.Values | join " " }} {{ if gt (len .CommonLabels) (len .GroupLabels) }}({{ with .CommonLabels.Remove .GroupLabels.Names }}{{ .Values | join " " }}{{ end }}){{ end }}{{ end }}
+    {{ define "__description" }}{{ if gt (len .Alerts.Firing) 0 }}Firing alerts:
+    {{ range .Alerts.Firing }}
+    - {{ .Annotations.summary }}{{ if .Annotations.description }} - {{ .Annotations.description }}{{ end }}
+    {{ end }}{{ end }}{{ if gt (len .Alerts.Resolved) 0 }}Resolved alerts:
+    {{ range .Alerts.Resolved }}
+    - {{ .Annotations.summary }}{{ if .Annotations.description }} - {{ .Annotations.description }}{{ end }}
+    {{ end }}{{ end }}{{ end }}
+
+    {{ define "email.default.subject" }}{{ template "__subject" . }}{{ end }}
+    {{ define "email.default.html" }}
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>{{ template "__subject" . }}</title>
+    </head>
+    <body>
+      <h2>{{ .Status | toUpper }} - {{ .GroupLabels.SortedPairs.Values | join " " }}</h2>
+      <p>{{ template "__description" . }}</p>
+      <h3>Details</h3>
+      <table border="1">
+        <tr><th>Name</th><th>Value</th></tr>
+        {{ range .CommonLabels.SortedPairs }}
+        <tr><td>{{ .Name }}</td><td>{{ .Value }}</td></tr>
+        {{ end }}
+      </table>
+      <p><a href="{{ template "__alertmanagerURL" . }}">View in AlertManager</a></p>
+      {{ if .CommonAnnotations.runbook_url }}
+      <p><a href="{{ .CommonAnnotations.runbook_url }}">Runbook</a></p>
+      {{ end }}
+    </body>
+    </html>
+    {{ end }}
+
+  pagerduty.tmpl: |
+    {{ define "pagerduty.default.description" }}[{{ .Status | toUpper }}] {{ .GroupLabels.SortedPairs.Values | join " " }} - {{ .CommonAnnotations.summary }}{{ end }}
+
+  slack.tmpl: |
+    {{ define "slack.default.title" }}
+    [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.SortedPairs.Values | join " " }}
+    {{ end }}
+
+    {{ define "slack.default.text" }}
+    {{ template "__description" . }}
+    {{ if .CommonAnnotations.runbook_url }}
+    Runbook: {{ .CommonAnnotations.runbook_url }}
+    {{ end }}
+    {{ end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app: alertmanager
+    component: monitoring
+    part-of: hcbs-revenue-management
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      securityContext:
+        fsGroup: 65534  # nobody
+        runAsNonRoot: true
+        runAsUser: 65534  # nobody
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.25.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--config.file=/etc/alertmanager/alertmanager.yml"
+            - "--storage.path=/alertmanager"
+            - "--web.external-url=http://alertmanager.monitoring.svc.cluster.local:9093"
+          ports:
+            - containerPort: 9093
+              name: http
+          env:
+            - name: SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-smtp
+                  key: username
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-smtp
+                  key: password
+            - name: PAGERDUTY_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-pagerduty
+                  key: service-key
+            - name: PAGERDUTY_SECURITY_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-pagerduty
+                  key: security-key
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/alertmanager
+            - name: templates-volume
+              mountPath: /etc/alertmanager/templates
+            - name: alertmanager-data
+              mountPath: /alertmanager
+      volumes:
+        - name: config-volume
+          configMap:
+            name: alertmanager-config
+        - name: templates-volume
+          configMap:
+            name: alertmanager-templates
+        - name: alertmanager-data
+          persistentVolumeClaim:
+            claimName: alertmanager-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app: alertmanager
+    component: monitoring
+    part-of: hcbs-revenue-management
+  annotations:
+    description: "Exposes AlertManager service"
+spec:
+  selector:
+    app: alertmanager
+  ports:
+    - name: http
+      port: 9093
+      targetPort: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alertmanager-data
+  namespace: monitoring
+  labels:
+    app: alertmanager
+    component: monitoring
+    part-of: hcbs-revenue-management
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
