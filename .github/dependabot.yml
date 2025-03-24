@@ -1,0 +1,180 @@
+version: 2
+updates:
+  # Backend npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/src/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    versioning-strategy: "auto"
+    labels:
+      - "dependencies"
+      - "backend"
+    assignees:
+      - "tech-lead"
+    reviewers:
+      - "backend-team"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: "scope"
+    groups:
+      typescript-eslint:
+        patterns:
+          - "@typescript-eslint/*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
+      testing-libraries:
+        patterns:
+          - "@testing-library/*"
+          - "jest*"
+          - "ts-jest"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "express"
+        versions: ["5.x"]
+    open-pull-requests-limit: 10
+    rebase-strategy: "auto"
+    target-branch: "develop"
+    security-updates-only: false
+
+  # Frontend npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/src/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    versioning-strategy: "auto"
+    labels:
+      - "dependencies"
+      - "frontend"
+    assignees:
+      - "tech-lead"
+    reviewers:
+      - "frontend-team"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: "scope"
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "react-*"
+        update-types:
+          - "minor"
+          - "patch"
+      mui:
+        patterns:
+          - "@mui/*"
+          - "@emotion/*"
+        update-types:
+          - "minor"
+          - "patch"
+      typescript-eslint:
+        patterns:
+          - "@typescript-eslint/*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
+      testing-libraries:
+        patterns:
+          - "@testing-library/*"
+          - "jest*"
+          - "cypress*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "next"
+        versions: ["14.x"]
+    open-pull-requests-limit: 10
+    rebase-strategy: "auto"
+    target-branch: "develop"
+    security-updates-only: false
+
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/infrastructure/docker"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:00"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+      - "docker"
+    assignees:
+      - "devops-lead"
+    reviewers:
+      - "devops-team"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    open-pull-requests-limit: 5
+    rebase-strategy: "auto"
+    target-branch: "develop"
+    security-updates-only: false
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:00"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+      - "ci-cd"
+    assignees:
+      - "devops-lead"
+    reviewers:
+      - "devops-team"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      github-actions:
+        patterns:
+          - "actions/*"
+        update-types:
+          - "minor"
+          - "patch"
+    open-pull-requests-limit: 5
+    rebase-strategy: "auto"
+    target-branch: "develop"
+    security-updates-only: false
+
+  # Terraform dependencies
+  - package-ecosystem: "terraform"
+    directory: "/infrastructure/terraform"
+    schedule:
+      interval: "monthly"
+      day: "first-monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+      - "infrastructure"
+    assignees:
+      - "devops-lead"
+    reviewers:
+      - "devops-team"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    open-pull-requests-limit: 3
+    rebase-strategy: "auto"
+    target-branch: "develop"
+    security-updates-only: false
