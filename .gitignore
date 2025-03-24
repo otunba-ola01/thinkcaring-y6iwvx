@@ -1,0 +1,74 @@
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnp/
+.pnp.js
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+src/backend/.env
+src/web/.env
+src/web/.env.development
+src/web/.env.production
+
+# Build directories
+dist/
+build/
+.next/
+out/
+src/web/.next/
+src/web/out/
+src/backend/dist/
+
+# Coverage directories
+coverage/
+.nyc_output/
+src/web/coverage/
+src/backend/coverage/
+
+# Logs
+logs/
+*.log
+
+# Database files
+*.sqlite
+*.db
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Generated files
+src/backend/docs/swagger.json
+src/web/public/sitemap.xml
+src/web/public/robots.txt
+
+# Terraform files
+infrastructure/terraform/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
+# Kubernetes secrets
+infrastructure/kubernetes/manifests/**/secrets.yaml
+
+# Docker volumes
+docker-volumes/
+
+# Cypress generated files
+src/web/cypress/videos/
+src/web/cypress/screenshots/
