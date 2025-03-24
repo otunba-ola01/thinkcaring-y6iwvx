@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: hcbs
+  labels:
+    app: redis
+    component: cache
+    part-of: hcbs-revenue-management
+  annotations:
+    description: "Headless service for Redis StatefulSet"
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9121"
+spec:
+  clusterIP: None
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+      protocol: TCP
+    - name: metrics
+      port: 9121
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    app: redis
+  publishNotReadyAddresses: false
