@@ -1,0 +1,91 @@
+/* 
+ * Custom styling for NProgress
+ * Matches the application's design system with primary blue (#0F52BA)
+ * Provides visual feedback during page transitions and API requests
+ */
+
+/* Main container - ensure it doesn't interfere with user interactions */
+#nprogress {
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Main progress bar - using primary blue color from design system */
+#nprogress .bar {
+  background: #0F52BA;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  z-index: 9999;
+}
+
+/* Create gradient effect at the end of the progress bar */
+#nprogress .peg {
+  display: block;
+  position: absolute;
+  right: 0px;
+  width: 100px;
+  height: 100%;
+  box-shadow: 0 0 10px #0F52BA, 0 0 5px #0F52BA;
+  opacity: 1.0;
+  transform: rotate(3deg) translate(0px, -4px);
+}
+
+/* Position the loading spinner in the top-right corner of the screen */
+#nprogress .spinner {
+  display: block;
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: 9999;
+}
+
+/* Style the spinner with the primary color and define its animation */
+#nprogress .spinner-icon {
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  border: solid 2px transparent;
+  border-top-color: #0F52BA;
+  border-left-color: #0F52BA;
+  border-radius: 50%;
+  animation: nprogress-spinner 400ms linear infinite;
+}
+
+/* Support custom positioning within specific parent elements */
+.nprogress-custom-parent {
+  overflow: hidden;
+  position: relative;
+}
+
+/* Adjust positioning for custom parent containers */
+.nprogress-custom-parent #nprogress .spinner,
+.nprogress-custom-parent #nprogress .bar {
+  position: absolute;
+}
+
+/* Define the rotation animation for the spinner */
+@keyframes nprogress-spinner {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  /* Adjust spinner position on mobile devices */
+  #nprogress .spinner {
+    top: 10px;
+    right: 10px;
+  }
+  
+  /* Reduce progress bar height on mobile devices */
+  #nprogress .bar {
+    height: 2px;
+  }
+}
