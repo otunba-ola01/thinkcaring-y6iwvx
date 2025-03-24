@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hcbs-web
+  namespace: hcbs
+  labels:
+    app: hcbs-web
+    component: frontend
+    part-of: hcbs-revenue-management
+  annotations:
+    description: "HCBS Revenue Management System Web Frontend"
+    kubernetes.io/change-cause: "Initial deployment"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hcbs-web
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: hcbs-web
+        component: frontend
+        part-of: hcbs-revenue-management
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "3000"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - hcbs-web
+              topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1000
+      containers:
+      - name: web
+        image: ${REGISTRY_URL}/hcbs-web:${IMAGE_TAG}
+        imagePullPolicy: Always
+        securityContext:
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: hcbs-web-config
+              key: NODE_ENV
+        envFrom:
+        - configMapRef:
+            name: hcbs-web-config
+        - secretRef:
+            name: hcbs-web-secret
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 12
+        volumeMounts:
+        - name: tmp
+          mountPath: /app/tmp
+        - name: cache
+          mountPath: /app/.next/cache
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}
+      terminationGracePeriodSeconds: 60
+      imagePullSecrets:
+      - name: registry-credentials
