@@ -1,0 +1,652 @@
+{
+  "users": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "email": "admin@thinkcaring.com",
+      "password": "Admin123!",
+      "firstName": "Admin",
+      "lastName": "User",
+      "role": "ADMINISTRATOR",
+      "permissions": [
+        "USERS_VIEW", "USERS_CREATE", "USERS_UPDATE", "USERS_DELETE",
+        "CLIENTS_VIEW", "CLIENTS_CREATE", "CLIENTS_UPDATE", "CLIENTS_DELETE",
+        "SERVICES_VIEW", "SERVICES_CREATE", "SERVICES_UPDATE", "SERVICES_DELETE",
+        "CLAIMS_VIEW", "CLAIMS_CREATE", "CLAIMS_UPDATE", "CLAIMS_DELETE", "CLAIMS_SUBMIT",
+        "BILLING_VIEW", "BILLING_CREATE", "BILLING_UPDATE", "BILLING_SUBMIT",
+        "PAYMENTS_VIEW", "PAYMENTS_CREATE", "PAYMENTS_UPDATE", "PAYMENTS_DELETE",
+        "REPORTS_VIEW", "REPORTS_CREATE", "REPORTS_EXPORT",
+        "SETTINGS_VIEW", "SETTINGS_UPDATE", "SETTINGS_MANAGE",
+        "SYSTEM_VIEW", "SYSTEM_MANAGE"
+      ],
+      "status": "ACTIVE",
+      "mfaEnabled": true,
+      "mfaMethod": "APP",
+      "mfaCode": "123456",
+      "lastLogin": "2023-06-01T10:30:00Z",
+      "organization": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "ThinkCaring HCBS Provider"
+      },
+      "contactInfo": {
+        "phone": "555-123-4567",
+        "address": {
+          "street": "123 Admin St",
+          "city": "Healthcare City",
+          "state": "CA",
+          "zipCode": "90210"
+        }
+      },
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2023-06-01T10:30:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "email": "billing@thinkcaring.com",
+      "password": "Billing123!",
+      "firstName": "Billing",
+      "lastName": "Specialist",
+      "role": "BILLING_SPECIALIST",
+      "permissions": [
+        "CLIENTS_VIEW",
+        "SERVICES_VIEW", "SERVICES_CREATE", "SERVICES_UPDATE",
+        "CLAIMS_VIEW", "CLAIMS_CREATE", "CLAIMS_UPDATE", "CLAIMS_SUBMIT",
+        "BILLING_VIEW", "BILLING_CREATE", "BILLING_UPDATE", "BILLING_SUBMIT",
+        "PAYMENTS_VIEW", "PAYMENTS_CREATE", "PAYMENTS_UPDATE",
+        "REPORTS_VIEW", "REPORTS_EXPORT"
+      ],
+      "status": "ACTIVE",
+      "mfaEnabled": true,
+      "mfaMethod": "SMS",
+      "mfaCode": "123456",
+      "lastLogin": "2023-06-01T09:15:00Z",
+      "organization": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "ThinkCaring HCBS Provider"
+      },
+      "contactInfo": {
+        "phone": "555-234-5678",
+        "address": {
+          "street": "456 Billing Ave",
+          "city": "Healthcare City",
+          "state": "CA",
+          "zipCode": "90211"
+        }
+      },
+      "createdAt": "2023-01-15T00:00:00Z",
+      "updatedAt": "2023-06-01T09:15:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440003",
+      "email": "finance@thinkcaring.com",
+      "password": "Finance123!",
+      "firstName": "Financial",
+      "lastName": "Manager",
+      "role": "FINANCIAL_MANAGER",
+      "permissions": [
+        "CLIENTS_VIEW",
+        "SERVICES_VIEW",
+        "CLAIMS_VIEW", "CLAIMS_CREATE", "CLAIMS_UPDATE", "CLAIMS_SUBMIT",
+        "BILLING_VIEW", "BILLING_CREATE", "BILLING_UPDATE", "BILLING_SUBMIT",
+        "PAYMENTS_VIEW", "PAYMENTS_CREATE", "PAYMENTS_UPDATE", "PAYMENTS_DELETE",
+        "REPORTS_VIEW", "REPORTS_CREATE", "REPORTS_EXPORT",
+        "SETTINGS_VIEW", "SETTINGS_UPDATE"
+      ],
+      "status": "ACTIVE",
+      "mfaEnabled": true,
+      "mfaMethod": "EMAIL",
+      "mfaCode": "123456",
+      "lastLogin": "2023-06-01T08:45:00Z",
+      "organization": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "ThinkCaring HCBS Provider"
+      },
+      "contactInfo": {
+        "phone": "555-345-6789",
+        "address": {
+          "street": "789 Finance Blvd",
+          "city": "Healthcare City",
+          "state": "CA",
+          "zipCode": "90212"
+        }
+      },
+      "createdAt": "2023-01-20T00:00:00Z",
+      "updatedAt": "2023-06-01T08:45:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440004",
+      "email": "program@thinkcaring.com",
+      "password": "Program123!",
+      "firstName": "Program",
+      "lastName": "Manager",
+      "role": "PROGRAM_MANAGER",
+      "permissions": [
+        "CLIENTS_VIEW", "CLIENTS_CREATE", "CLIENTS_UPDATE",
+        "SERVICES_VIEW", "SERVICES_CREATE", "SERVICES_UPDATE",
+        "CLAIMS_VIEW",
+        "BILLING_VIEW",
+        "PAYMENTS_VIEW",
+        "REPORTS_VIEW", "REPORTS_EXPORT"
+      ],
+      "status": "ACTIVE",
+      "mfaEnabled": false,
+      "mfaMethod": null,
+      "lastLogin": "2023-05-31T16:20:00Z",
+      "organization": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "ThinkCaring HCBS Provider"
+      },
+      "contactInfo": {
+        "phone": "555-456-7890",
+        "address": {
+          "street": "101 Program Ct",
+          "city": "Healthcare City",
+          "state": "CA",
+          "zipCode": "90213"
+        }
+      },
+      "createdAt": "2023-02-01T00:00:00Z",
+      "updatedAt": "2023-05-31T16:20:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440005",
+      "email": "readonly@thinkcaring.com",
+      "password": "Readonly123!",
+      "firstName": "Read",
+      "lastName": "Only",
+      "role": "READ_ONLY",
+      "permissions": [
+        "CLIENTS_VIEW",
+        "SERVICES_VIEW",
+        "CLAIMS_VIEW",
+        "BILLING_VIEW",
+        "PAYMENTS_VIEW",
+        "REPORTS_VIEW"
+      ],
+      "status": "ACTIVE",
+      "mfaEnabled": false,
+      "mfaMethod": null,
+      "lastLogin": "2023-05-30T14:10:00Z",
+      "organization": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "ThinkCaring HCBS Provider"
+      },
+      "contactInfo": {
+        "phone": "555-567-8901",
+        "address": {
+          "street": "202 View St",
+          "city": "Healthcare City",
+          "state": "CA",
+          "zipCode": "90214"
+        }
+      },
+      "createdAt": "2023-02-15T00:00:00Z",
+      "updatedAt": "2023-05-30T14:10:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440006",
+      "email": "inactive@thinkcaring.com",
+      "password": "Inactive123!",
+      "firstName": "Inactive",
+      "lastName": "User",
+      "role": "BILLING_SPECIALIST",
+      "permissions": [
+        "CLIENTS_VIEW",
+        "SERVICES_VIEW",
+        "CLAIMS_VIEW",
+        "BILLING_VIEW",
+        "PAYMENTS_VIEW",
+        "REPORTS_VIEW"
+      ],
+      "status": "INACTIVE",
+      "mfaEnabled": false,
+      "mfaMethod": null,
+      "lastLogin": "2023-04-15T11:30:00Z",
+      "organization": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "ThinkCaring HCBS Provider"
+      },
+      "contactInfo": {
+        "phone": "555-678-9012",
+        "address": {
+          "street": "303 Inactive Rd",
+          "city": "Healthcare City",
+          "state": "CA",
+          "zipCode": "90215"
+        }
+      },
+      "createdAt": "2023-03-01T00:00:00Z",
+      "updatedAt": "2023-05-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440007",
+      "email": "locked@thinkcaring.com",
+      "password": "Locked123!",
+      "firstName": "Locked",
+      "lastName": "Account",
+      "role": "PROGRAM_MANAGER",
+      "permissions": [
+        "CLIENTS_VIEW",
+        "SERVICES_VIEW",
+        "CLAIMS_VIEW",
+        "REPORTS_VIEW"
+      ],
+      "status": "LOCKED",
+      "mfaEnabled": true,
+      "mfaMethod": "SMS",
+      "mfaCode": "123456",
+      "lastLogin": "2023-05-01T09:45:00Z",
+      "organization": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "ThinkCaring HCBS Provider"
+      },
+      "contactInfo": {
+        "phone": "555-789-0123",
+        "address": {
+          "street": "404 Locked Lane",
+          "city": "Healthcare City",
+          "state": "CA",
+          "zipCode": "90216"
+        }
+      },
+      "createdAt": "2023-03-15T00:00:00Z",
+      "updatedAt": "2023-05-15T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440008",
+      "email": "pending@thinkcaring.com",
+      "password": "Pending123!",
+      "firstName": "Pending",
+      "lastName": "Activation",
+      "role": "READ_ONLY",
+      "permissions": [
+        "CLIENTS_VIEW",
+        "SERVICES_VIEW",
+        "CLAIMS_VIEW",
+        "REPORTS_VIEW"
+      ],
+      "status": "PENDING",
+      "mfaEnabled": false,
+      "mfaMethod": null,
+      "lastLogin": null,
+      "organization": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "ThinkCaring HCBS Provider"
+      },
+      "contactInfo": {
+        "phone": "555-890-1234",
+        "address": {
+          "street": "505 Pending Pkwy",
+          "city": "Healthcare City",
+          "state": "CA",
+          "zipCode": "90217"
+        }
+      },
+      "createdAt": "2023-05-25T00:00:00Z",
+      "updatedAt": "2023-05-25T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440009",
+      "email": "reset@thinkcaring.com",
+      "password": "Temp123!",
+      "firstName": "Password",
+      "lastName": "Reset",
+      "role": "BILLING_SPECIALIST",
+      "permissions": [
+        "CLIENTS_VIEW",
+        "SERVICES_VIEW",
+        "CLAIMS_VIEW",
+        "BILLING_VIEW",
+        "PAYMENTS_VIEW",
+        "REPORTS_VIEW"
+      ],
+      "status": "PASSWORD_RESET",
+      "mfaEnabled": false,
+      "mfaMethod": null,
+      "lastLogin": null,
+      "organization": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "ThinkCaring HCBS Provider"
+      },
+      "contactInfo": {
+        "phone": "555-901-2345",
+        "address": {
+          "street": "606 Reset Rd",
+          "city": "Healthcare City",
+          "state": "CA",
+          "zipCode": "90218"
+        }
+      },
+      "createdAt": "2023-05-28T00:00:00Z",
+      "updatedAt": "2023-05-28T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440010",
+      "email": "invalid@example.com",
+      "password": "Invalid123!",
+      "firstName": "Invalid",
+      "lastName": "User",
+      "role": "READ_ONLY",
+      "permissions": [],
+      "status": "ACTIVE",
+      "mfaEnabled": false,
+      "mfaMethod": null,
+      "lastLogin": null,
+      "organization": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "ThinkCaring HCBS Provider"
+      },
+      "contactInfo": {
+        "phone": "555-012-3456",
+        "address": {
+          "street": "707 Invalid Ave",
+          "city": "Outside City",
+          "state": "NY",
+          "zipCode": "10001"
+        }
+      },
+      "createdAt": "2023-06-01T00:00:00Z",
+      "updatedAt": "2023-06-01T00:00:00Z"
+    }
+  ],
+  "userListResponse": {
+    "items": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440001",
+        "email": "admin@thinkcaring.com",
+        "firstName": "Admin",
+        "lastName": "User",
+        "fullName": "Admin User",
+        "roleId": "550e8400-e29b-41d4-a716-446655440101",
+        "roleName": "Administrator",
+        "status": "ACTIVE",
+        "lastLogin": "2023-06-01T10:30:00Z",
+        "mfaEnabled": true,
+        "mfaMethod": "APP",
+        "authProvider": "LOCAL",
+        "contactInfo": {
+          "phone": "555-123-4567",
+          "address": {
+            "street": "123 Admin St",
+            "city": "Healthcare City",
+            "state": "CA",
+            "zipCode": "90210"
+          }
+        },
+        "createdAt": "2023-01-01T00:00:00Z",
+        "updatedAt": "2023-06-01T10:30:00Z"
+      },
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440002",
+        "email": "billing@thinkcaring.com",
+        "firstName": "Billing",
+        "lastName": "Specialist",
+        "fullName": "Billing Specialist",
+        "roleId": "550e8400-e29b-41d4-a716-446655440102",
+        "roleName": "Billing Specialist",
+        "status": "ACTIVE",
+        "lastLogin": "2023-06-01T09:15:00Z",
+        "mfaEnabled": true,
+        "mfaMethod": "SMS",
+        "authProvider": "LOCAL",
+        "contactInfo": {
+          "phone": "555-234-5678",
+          "address": {
+            "street": "456 Billing Ave",
+            "city": "Healthcare City",
+            "state": "CA",
+            "zipCode": "90211"
+          }
+        },
+        "createdAt": "2023-01-15T00:00:00Z",
+        "updatedAt": "2023-06-01T09:15:00Z"
+      },
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440003",
+        "email": "finance@thinkcaring.com",
+        "firstName": "Financial",
+        "lastName": "Manager",
+        "fullName": "Financial Manager",
+        "roleId": "550e8400-e29b-41d4-a716-446655440103",
+        "roleName": "Financial Manager",
+        "status": "ACTIVE",
+        "lastLogin": "2023-06-01T08:45:00Z",
+        "mfaEnabled": true,
+        "mfaMethod": "EMAIL",
+        "authProvider": "LOCAL",
+        "contactInfo": {
+          "phone": "555-345-6789",
+          "address": {
+            "street": "789 Finance Blvd",
+            "city": "Healthcare City",
+            "state": "CA",
+            "zipCode": "90212"
+          }
+        },
+        "createdAt": "2023-01-20T00:00:00Z",
+        "updatedAt": "2023-06-01T08:45:00Z"
+      }
+    ],
+    "totalItems": 10,
+    "page": 1,
+    "pageSize": 3,
+    "totalPages": 4
+  },
+  "roles": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440101",
+      "name": "Administrator",
+      "description": "Full system access with all permissions",
+      "isSystem": true,
+      "permissions": [
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440201",
+          "name": "USERS_VIEW",
+          "description": "View user accounts",
+          "category": "USERS",
+          "action": "VIEW",
+          "resource": null,
+          "isSystem": true
+        },
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440202",
+          "name": "USERS_CREATE",
+          "description": "Create user accounts",
+          "category": "USERS",
+          "action": "CREATE",
+          "resource": null,
+          "isSystem": true
+        }
+      ],
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440102",
+      "name": "Billing Specialist",
+      "description": "Manages claims, billing, and payment processes",
+      "isSystem": true,
+      "permissions": [
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440203",
+          "name": "CLAIMS_VIEW",
+          "description": "View claims",
+          "category": "CLAIMS",
+          "action": "VIEW",
+          "resource": null,
+          "isSystem": true
+        },
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440204",
+          "name": "CLAIMS_CREATE",
+          "description": "Create claims",
+          "category": "CLAIMS",
+          "action": "CREATE",
+          "resource": null,
+          "isSystem": true
+        }
+      ],
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440103",
+      "name": "Financial Manager",
+      "description": "Oversees financial operations and reporting",
+      "isSystem": true,
+      "permissions": [
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440205",
+          "name": "REPORTS_VIEW",
+          "description": "View reports",
+          "category": "REPORTS",
+          "action": "VIEW",
+          "resource": null,
+          "isSystem": true
+        },
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440206",
+          "name": "REPORTS_CREATE",
+          "description": "Create reports",
+          "category": "REPORTS",
+          "action": "CREATE",
+          "resource": null,
+          "isSystem": true
+        }
+      ],
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440104",
+      "name": "Program Manager",
+      "description": "Manages program-specific operations",
+      "isSystem": true,
+      "permissions": [
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440207",
+          "name": "CLIENTS_VIEW",
+          "description": "View clients",
+          "category": "CLIENTS",
+          "action": "VIEW",
+          "resource": null,
+          "isSystem": true
+        },
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440208",
+          "name": "CLIENTS_CREATE",
+          "description": "Create clients",
+          "category": "CLIENTS",
+          "action": "CREATE",
+          "resource": null,
+          "isSystem": true
+        }
+      ],
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440105",
+      "name": "Read Only",
+      "description": "View-only access to system data",
+      "isSystem": true,
+      "permissions": [
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440209",
+          "name": "CLIENTS_VIEW",
+          "description": "View clients",
+          "category": "CLIENTS",
+          "action": "VIEW",
+          "resource": null,
+          "isSystem": true
+        },
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440210",
+          "name": "SERVICES_VIEW",
+          "description": "View services",
+          "category": "SERVICES",
+          "action": "VIEW",
+          "resource": null,
+          "isSystem": true
+        }
+      ],
+      "createdAt": "2023-01-01T00:00:00Z",
+      "updatedAt": "2023-01-01T00:00:00Z"
+    }
+  ],
+  "loginResponse": {
+    "user": {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "email": "admin@thinkcaring.com",
+      "firstName": "Admin",
+      "lastName": "User",
+      "role": "ADMINISTRATOR",
+      "permissions": [
+        "USERS_VIEW", "USERS_CREATE", "USERS_UPDATE", "USERS_DELETE",
+        "CLIENTS_VIEW", "CLIENTS_CREATE", "CLIENTS_UPDATE", "CLIENTS_DELETE",
+        "SERVICES_VIEW", "SERVICES_CREATE", "SERVICES_UPDATE", "SERVICES_DELETE",
+        "CLAIMS_VIEW", "CLAIMS_CREATE", "CLAIMS_UPDATE", "CLAIMS_DELETE", "CLAIMS_SUBMIT",
+        "BILLING_VIEW", "BILLING_CREATE", "BILLING_UPDATE", "BILLING_SUBMIT",
+        "PAYMENTS_VIEW", "PAYMENTS_CREATE", "PAYMENTS_UPDATE", "PAYMENTS_DELETE",
+        "REPORTS_VIEW", "REPORTS_CREATE", "REPORTS_EXPORT",
+        "SETTINGS_VIEW", "SETTINGS_UPDATE", "SETTINGS_MANAGE",
+        "SYSTEM_VIEW", "SYSTEM_MANAGE"
+      ],
+      "mfaEnabled": true,
+      "lastLogin": "2023-06-01T10:30:00Z",
+      "status": "ACTIVE",
+      "organization": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "ThinkCaring HCBS Provider"
+      }
+    },
+    "tokens": {
+      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDEiLCJlbWFpbCI6ImFkbWluQHRoaW5rY2FyaW5nLmNvbSIsInJvbGUiOiJBRE1JTklTVFJBVE9SIiwiaWF0IjoxNjg1NjEyMjAwLCJleHAiOjE2ODU2MTU4MDB9.8JGvTQQFEgDCpSJHxFBQPyKFGTLYu8VzBhYwIZH5YgQ",
+      "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDEiLCJ0eXBlIjoicmVmcmVzaCIsImlhdCI6MTY4NTYxMjIwMCwiZXhwIjoxNjg2MjE3MDAwfQ.7aR-QxXJfmAJVLUNJ8sMhx5rBJfJiCYTfUxzQsOPgHI",
+      "expiresAt": 1685615800000
+    },
+    "mfaRequired": false,
+    "mfaResponse": null
+  },
+  "mfaResponse": {
+    "mfaToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDEiLCJ0eXBlIjoibWZhIiwiaWF0IjoxNjg1NjEyMjAwLCJleHAiOjE2ODU2MTI4MDB9.9Hs7HQkOSFYPKDfLqIJz8dQyFbus6rKLI5zGBzPP4Qw",
+    "method": "APP",
+    "expiresAt": 1685612800000
+  },
+  "errorResponses": {
+    "invalidCredentials": {
+      "status": 401,
+      "message": "Invalid email or password",
+      "code": "INVALID_CREDENTIALS"
+    },
+    "accountLocked": {
+      "status": 401,
+      "message": "Account is locked. Please contact an administrator.",
+      "code": "ACCOUNT_LOCKED"
+    },
+    "accountInactive": {
+      "status": 401,
+      "message": "Account is inactive. Please contact an administrator.",
+      "code": "ACCOUNT_INACTIVE"
+    },
+    "sessionExpired": {
+      "status": 401,
+      "message": "Your session has expired. Please log in again.",
+      "code": "SESSION_EXPIRED"
+    },
+    "invalidToken": {
+      "status": 401,
+      "message": "Invalid or expired token",
+      "code": "INVALID_TOKEN"
+    },
+    "invalidMfaCode": {
+      "status": 401,
+      "message": "Invalid verification code",
+      "code": "INVALID_MFA_CODE"
+    },
+    "expiredMfaToken": {
+      "status": 401,
+      "message": "Verification session expired. Please log in again.",
+      "code": "EXPIRED_MFA_TOKEN"
+    }
+  }
+}
