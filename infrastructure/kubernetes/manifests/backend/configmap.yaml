@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hcbs-backend-config
+  namespace: hcbs
+  labels:
+    app: hcbs-backend
+    component: api
+    part-of: hcbs-revenue-management
+  annotations:
+    description: "Non-sensitive configuration for HCBS Revenue Management System Backend"
+data:
+  # Application Settings
+  NODE_ENV: "production"
+  PORT: "3000"
+  API_BASE_PATH: "/api"
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  LOG_DIR: "/app/logs"
+  
+  # Database Configuration
+  DB_HOST: "postgres-postgresql.database.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "hcbs_revenue"
+  DB_SSL: "true"
+  DB_POOL_MIN: "5"
+  DB_POOL_MAX: "20"
+  DB_IDLE_TIMEOUT: "30000"
+  DB_ACQUIRE_TIMEOUT: "60000"
+  
+  # Redis Configuration
+  REDIS_HOST: "redis-master.cache.svc.cluster.local"
+  REDIS_PORT: "6379"
+  REDIS_TLS: "true"
+  REDIS_KEY_PREFIX: "hcbs:"
+  REDIS_DEFAULT_TTL: "900"
+  REDIS_SESSION_TTL: "900"
+  REDIS_EXTENDED_SESSION_TTL: "604800"
+  
+  # CORS Settings
+  ALLOWED_ORIGINS: "https://app.thinkcaring.com,https://admin.thinkcaring.com"
+  CORS_MAX_AGE: "86400"
+  
+  # Authentication Settings
+  ACCESS_TOKEN_EXPIRATION: "900"
+  REFRESH_TOKEN_EXPIRATION: "604800"
+  MFA_TOKEN_EXPIRATION: "600"
+  PASSWORD_RESET_EXPIRATION: "86400"
+  TOKEN_ISSUER: "hcbs-revenue-management-system"
+  TOKEN_AUDIENCE: "hcbs-api"
+  
+  # Password Policy
+  PASSWORD_MIN_LENGTH: "12"
+  PASSWORD_REQUIRE_UPPERCASE: "true"
+  PASSWORD_REQUIRE_LOWERCASE: "true"
+  PASSWORD_REQUIRE_NUMBERS: "true"
+  PASSWORD_REQUIRE_SYMBOLS: "true"
+  PASSWORD_EXPIRATION_DAYS: "90"
+  PASSWORD_HISTORY_COUNT: "10"
+  PASSWORD_MAX_ATTEMPTS: "5"
+  PASSWORD_LOCKOUT_DURATION: "30"
+  
+  # Multi-Factor Authentication
+  MFA_ENABLED: "true"
+  MFA_REQUIRED_ROLES: "administrator,financial_manager"
+  MFA_METHODS: "TOTP,SMS,EMAIL"
+  MFA_DEFAULT_METHOD: "TOTP"
+  MFA_CODE_LENGTH: "6"
+  MFA_CODE_EXPIRATION: "600"
+  MFA_BACKUP_CODES_COUNT: "10"
+  TRUSTED_DEVICE_EXPIRATION_DAYS: "30"
+  
+  # Session Management
+  SESSION_INACTIVITY_TIMEOUT: "900"
+  SESSION_ABSOLUTE_TIMEOUT: "28800"
+  MAX_CONCURRENT_SESSIONS: "3"
+  REMEMBER_ME_DURATION: "2592000"
+  
+  # Cookie Settings
+  COOKIE_SECURE: "true"
+  COOKIE_SAME_SITE: "strict"
+  COOKIE_DOMAIN: "thinkcaring.com"
+  COOKIE_PATH: "/"
+  COOKIE_MAX_AGE: "86400"
+  
+  # Login Security
+  MAX_FAILED_LOGIN_ATTEMPTS: "5"
+  LOCKOUT_DURATION_MINUTES: "30"
+  REQUIRE_CAPTCHA: "true"
+  CAPTCHA_THRESHOLD: "3"
+  
+  # Email Configuration
+  SMTP_HOST: "smtp.sendgrid.net"
+  SMTP_PORT: "587"
+  SMTP_SECURE: "false"
+  SMTP_FROM_EMAIL: "noreply@thinkcaring.com"
+  SMTP_FROM_NAME: "HCBS Revenue Management"
+  
+  # Storage Configuration
+  S3_BUCKET: "hcbs-documents"
+  S3_REGION: "us-east-1"
+  S3_ENDPOINT: "https://s3.amazonaws.com"
+  
+  # Integration Endpoints
+  CLEARINGHOUSE_URL: "https://api.changehealthcare.com"
+  CLEARINGHOUSE_TEST_MODE: "false"
+  EHR_API_URL: "https://api.therapservices.net"
+  EHR_API_VERSION: "v1"
+  
+  # Rate Limiting
+  RATE_LIMIT_WINDOW: "60000"
+  RATE_LIMIT_MAX: "60"
+  RATE_LIMIT_STANDARD_WINDOW: "60000"
+  RATE_LIMIT_STANDARD_MAX: "60"
+  RATE_LIMIT_AUTH_WINDOW: "60000"
+  RATE_LIMIT_AUTH_MAX: "10"
+  
+  # API Documentation
+  SWAGGER_ENABLED: "true"
+  SWAGGER_PATH: "/api-docs"
+  SWAGGER_UI_PATH: "/api-docs/ui"
+  
+  # Monitoring
+  METRICS_ENABLED: "true"
+  METRICS_PATH: "/metrics"
+  HEALTH_CHECK_PATH: "/health"
