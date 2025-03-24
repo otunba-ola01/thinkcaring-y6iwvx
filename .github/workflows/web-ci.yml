@@ -1,0 +1,382 @@
+name: Web CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/web/**'
+      - '.github/workflows/web-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/web/**'
+      - '.github/workflows/web-ci.yml'
+
+env:
+  NODE_VERSION: '18.16.0'
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  lint:
+    name: Lint and Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/web/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+      
+      - name: Run ESLint
+        working-directory: src/web
+        run: npm run lint
+      
+      - name: Type check
+        working-directory: src/web
+        run: npm run typecheck
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/web/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+      
+      - name: Run npm audit
+        working-directory: src/web
+        run: npm audit --audit-level=high
+      
+      - name: Run Snyk scan
+        uses: snyk/actions/node@master
+        with:
+          args: --severity-threshold=high --file=src/web/package.json
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/web/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+      
+      - name: Run unit tests
+        working-directory: src/web
+        run: npm run test
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: unit-test-results
+          path: src/web/reports/jest-junit.xml
+        if: always()
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/web/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+      
+      - name: Run integration tests
+        working-directory: src/web
+        run: npm run test -- --testPathPattern=integration
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-results
+          path: src/web/reports/jest-junit.xml
+        if: always()
+
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/web/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+      
+      - name: Build and start test environment
+        run: docker-compose -f infrastructure/docker/docker-compose.yml up -d --build
+      
+      - name: Wait for services to be ready
+        run: sleep 30
+      
+      - name: Run E2E tests
+        working-directory: src/web
+        run: npm run test:e2e
+        env:
+          CYPRESS_BASE_URL: 'http://localhost'
+          NEXT_TELEMETRY_DISABLED: '1'
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-test-results
+          path: src/web/cypress/results
+        if: always()
+      
+      - name: Stop test environment
+        run: docker-compose -f infrastructure/docker/docker-compose.yml down
+        if: always()
+
+  accessibility-tests:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/web/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+      
+      - name: Build application
+        working-directory: src/web
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+      
+      - name: Start application
+        working-directory: src/web
+        run: npm start & sleep 10
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+      
+      - name: Run accessibility tests
+        working-directory: src/web
+        run: npx cypress run --config-file cypress/config/accessibility.config.js
+        env:
+          CYPRESS_BASE_URL: 'http://localhost:3000'
+      
+      - name: Upload accessibility results
+        uses: actions/upload-artifact@v3
+        with:
+          name: accessibility-test-results
+          path: src/web/cypress/results/accessibility
+        if: always()
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, security-scan, e2e-tests, accessibility-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/web/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+      
+      - name: Build application
+        working-directory: src/web
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-build
+          path: src/web/.next
+      
+      - name: Upload public directory
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-public
+          path: src/web/public
+      
+      - name: Upload package.json
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-package-json
+          path: src/web/package.json
+      
+      - name: Upload next.config.js
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-next-config
+          path: src/web/next.config.js
+      
+      - name: Create build status file
+        run: echo 'web-build-success' > build-status.txt
+      
+      - name: Upload build status
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-build-status
+          path: build-status.txt
+
+  coverage-report:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/web/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+      
+      - name: Generate coverage report
+        working-directory: src/web
+        run: npm run test:coverage
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+      
+      - name: Check coverage thresholds
+        working-directory: src/web
+        run: npx jest --coverage --coverageThreshold='{"global":{"branches":80,"functions":80,"lines":80,"statements":80}}'
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: src/web/coverage
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: web-build
+          path: src/web/.next
+      
+      - name: Download public directory
+        uses: actions/download-artifact@v3
+        with:
+          name: web-public
+          path: src/web/public
+      
+      - name: Download package.json
+        uses: actions/download-artifact@v3
+        with:
+          name: web-package-json
+          path: src/web
+      
+      - name: Download next.config.js
+        uses: actions/download-artifact@v3
+        with:
+          name: web-next-config
+          path: src/web
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: infrastructure/docker/web/Dockerfile
+          push: false
+          tags: hcbs-web:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Scan Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: hcbs-web:test
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+      
+      - name: Create Docker status file
+        run: echo 'docker-build-success' > docker-status.txt
+      
+      - name: Upload Docker status
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-build-status
+          path: docker-status.txt
