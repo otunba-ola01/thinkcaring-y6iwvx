@@ -1,0 +1,40 @@
+# Owners will be automatically requested for review on pull requests that modify code they own.
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners who will be requested for review on all pull requests
+* @thinkcaring/lead-developers
+
+# Backend code ownership rules, with specialized teams for services and integrations
+/src/backend/ @thinkcaring/backend-team
+/src/backend/services/ @thinkcaring/backend-leads
+/src/backend/integrations/ @thinkcaring/integration-specialists
+
+# Frontend code ownership rules, with specialized teams for UI components and pages
+/src/web/ @thinkcaring/frontend-team
+/src/web/src/components/ @thinkcaring/ui-team
+/src/web/src/pages/ @thinkcaring/frontend-leads
+
+# Infrastructure and CI/CD pipeline ownership rules
+/infrastructure/ @thinkcaring/devops-team
+/.github/workflows/ @thinkcaring/devops-team
+/docker-compose.yml @thinkcaring/devops-team
+
+# Security-sensitive code requiring specialized review
+/src/backend/security/ @thinkcaring/security-team @thinkcaring/backend-leads
+/src/backend/middleware/auth.middleware.ts @thinkcaring/security-team
+/src/web/src/context/AuthContext.tsx @thinkcaring/security-team
+
+# Documentation ownership rules
+*.md @thinkcaring/documentation-team
+/src/backend/docs/ @thinkcaring/backend-team @thinkcaring/documentation-team
+/src/web/README.md @thinkcaring/frontend-team @thinkcaring/documentation-team
+
+# Configuration files requiring careful review
+package.json @thinkcaring/lead-developers
+tsconfig.json @thinkcaring/lead-developers
+.env.example @thinkcaring/devops-team @thinkcaring/security-team
+
+# Test code ownership rules
+/src/backend/tests/ @thinkcaring/qa-team @thinkcaring/backend-team
+/src/web/src/tests/ @thinkcaring/qa-team @thinkcaring/frontend-team
+/src/web/cypress/ @thinkcaring/qa-team
