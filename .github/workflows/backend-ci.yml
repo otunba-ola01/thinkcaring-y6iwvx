@@ -1,0 +1,317 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+env:
+  NODE_VERSION: '18.16.0'
+  POSTGRES_VERSION: '15.3'
+  REDIS_VERSION: '7.0'
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  lint:
+    name: Lint and Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/backend/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/backend
+        run: npm ci
+      
+      - name: Run ESLint
+        working-directory: src/backend
+        run: npm run lint
+      
+      - name: Type check
+        working-directory: src/backend
+        run: npm run typecheck
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/backend/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/backend
+        run: npm ci
+      
+      - name: Run npm audit
+        working-directory: src/backend
+        run: npm audit --audit-level=high
+      
+      - name: Run Snyk scan
+        uses: snyk/actions/node@master
+        with:
+          args: --severity-threshold=high --file=src/backend/package.json
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/backend/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/backend
+        run: npm ci
+      
+      - name: Run unit tests
+        working-directory: src/backend
+        run: npm run test:unit
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: unit-test-results
+          path: src/backend/reports/jest-junit.xml
+        if: always()
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    services:
+      postgres:
+        image: postgres:${{ env.POSTGRES_VERSION }}
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:${{ env.REDIS_VERSION }}
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/backend/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/backend
+        run: npm ci
+      
+      - name: Run migrations
+        working-directory: src/backend
+        run: npm run migrate
+        env:
+          DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+      
+      - name: Run integration tests
+        working-directory: src/backend
+        run: npm run test:integration
+        env:
+          DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-results
+          path: src/backend/reports/jest-junit.xml
+        if: always()
+
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/backend/package-lock.json'
+      
+      - name: Build and start test environment
+        run: docker-compose -f infrastructure/docker/docker-compose.yml up -d --build
+      
+      - name: Wait for services to be ready
+        run: sleep 30
+      
+      - name: Run E2E tests
+        working-directory: src/backend
+        run: npm run test:e2e
+        env:
+          API_URL: http://localhost:3001
+          NODE_ENV: test
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-test-results
+          path: src/backend/reports/jest-junit.xml
+        if: always()
+      
+      - name: Stop test environment
+        run: docker-compose -f infrastructure/docker/docker-compose.yml down
+        if: always()
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, security-scan, e2e-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/backend/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/backend
+        run: npm ci
+      
+      - name: Build application
+        working-directory: src/backend
+        run: npm run build
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-build
+          path: src/backend/dist
+      
+      - name: Create build status file
+        run: echo 'backend-build-success' > build-status.txt
+      
+      - name: Upload build status
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-build-status
+          path: build-status.txt
+
+  coverage-report:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'src/backend/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: src/backend
+        run: npm ci
+      
+      - name: Generate coverage report
+        working-directory: src/backend
+        run: npm run test:coverage
+      
+      - name: Check coverage thresholds
+        working-directory: src/backend
+        run: npx jest --coverage --coverageThreshold='{"global":{"branches":80,"functions":80,"lines":80,"statements":80}}'
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: src/backend/coverage
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: backend-build
+          path: src/backend/dist
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: infrastructure/docker/backend/Dockerfile
+          push: false
+          tags: hcbs-backend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Scan Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: hcbs-backend:test
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+      
+      - name: Create Docker status file
+        run: echo 'docker-build-success' > docker-status.txt
+      
+      - name: Upload Docker status
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-build-status
+          path: docker-status.txt
