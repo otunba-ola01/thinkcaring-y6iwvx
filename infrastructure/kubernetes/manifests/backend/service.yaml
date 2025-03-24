@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hcbs-backend
+  namespace: hcbs
+  labels:
+    app: hcbs-backend
+    component: api
+    part-of: hcbs-revenue-management
+  annotations:
+    description: "HCBS Revenue Management System Backend API"
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "3000"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: hcbs-backend
+  sessionAffinity: None
