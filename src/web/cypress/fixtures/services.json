@@ -1,0 +1,678 @@
+import axios from 'axios'; // axios v1.4+
+
+// API base URL - would typically come from environment variables
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+
+// Create axios instance with common configuration
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Service-related interfaces
+export interface Service {
+  id: string;
+  clientId: string;
+  serviceTypeId: string;
+  serviceCode: string;
+  serviceDate: string;
+  startTime: string;
+  endTime: string;
+  units: number;
+  rate: number;
+  amount: number;
+  staffId: string;
+  facilityId: string | null;
+  programId: string;
+  authorizationId: string;
+  documentationStatus: DocumentationStatus;
+  billingStatus: BillingStatus;
+  claimId: string | null;
+  notes: string;
+  documentIds: string[];
+  status: ServiceStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Client {
+  id: string;
+  firstName: string;
+  lastName: string;
+  medicaidId: string;
+}
+
+export interface ServiceType {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  status?: ServiceStatus;
+}
+
+export interface Staff {
+  id: string;
+  firstName: string;
+  lastName: string;
+  title: string;
+}
+
+export interface Facility {
+  id: string;
+  name?: string;
+  address?: string;
+  licenseNumber?: string;
+  status?: string;
+}
+
+export interface Program {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface Authorization {
+  id: string;
+  number: string;
+  startDate: string;
+  endDate: string;
+  authorizedUnits: number;
+  usedUnits: number;
+}
+
+export interface Claim {
+  id: string;
+  claimNumber?: string;
+  submissionDate?: string;
+  status?: string;
+  amount?: number;
+}
+
+export interface Document {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+}
+
+export interface ServiceWithRelations extends Service {
+  client: Client;
+  serviceType: ServiceType;
+  staff: Staff;
+  facility: Facility | null;
+  program: Program;
+  authorization: Authorization;
+  claim: Claim | null;
+  documents: Document[];
+}
+
+export interface ServiceSummary {
+  id: string;
+  clientName: string;
+  serviceType: string;
+  serviceDate: string;
+  units: number;
+  amount: number;
+  documentationStatus: DocumentationStatus;
+  billingStatus: BillingStatus;
+  programName: string;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  totalItems: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface ServiceListResponse extends PaginatedResponse<ServiceSummary> {}
+
+export interface ValidationError {
+  code: string;
+  message: string;
+  field: string;
+}
+
+export interface ServiceValidationResult {
+  serviceId: string;
+  isValid: boolean;
+  errors: ValidationError[];
+  warnings: ValidationError[];
+}
+
+export interface ServiceValidationResults {
+  results: ServiceValidationResult[];
+  isValid: boolean;
+  totalErrors: number;
+  totalWarnings: number;
+}
+
+export interface ProgramServiceMetric {
+  programId: string;
+  programName: string;
+  count: number;
+  amount: number;
+}
+
+export interface ServiceTypeMetric {
+  serviceTypeId: string;
+  serviceTypeName: string;
+  count: number;
+  amount: number;
+}
+
+export interface ServiceMetrics {
+  totalServices: number;
+  totalUnbilledServices: number;
+  totalUnbilledAmount: number;
+  incompleteDocumentation: number;
+  servicesByProgram: ProgramServiceMetric[];
+  servicesByType: ServiceTypeMetric[];
+}
+
+export interface ServiceCode {
+  id: string;
+  code: string;
+  description: string;
+  serviceTypeId: string;
+  rate: number;
+  unitType: string;
+  status: ServiceStatus;
+}
+
+// Enums
+export enum DocumentationStatus {
+  COMPLETE = 'COMPLETE',
+  INCOMPLETE = 'INCOMPLETE'
+}
+
+export enum BillingStatus {
+  UNBILLED = 'UNBILLED',
+  READY_FOR_BILLING = 'READY_FOR_BILLING',
+  IN_CLAIM = 'IN_CLAIM',
+  PAID = 'PAID',
+  DENIED = 'DENIED'
+}
+
+export enum ServiceStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE'
+}
+
+export enum UnitType {
+  HOUR = 'HOUR',
+  DAY = 'DAY',
+  HALF_DAY = 'HALF_DAY',
+  VISIT = 'VISIT',
+  MILE = 'MILE',
+  SESSION = 'SESSION'
+}
+
+// Filter and pagination interfaces
+export interface ServiceFilterParams {
+  clientId?: string;
+  serviceTypeId?: string;
+  programId?: string;
+  documentationStatus?: DocumentationStatus;
+  billingStatus?: BillingStatus;
+  startDate?: string;
+  endDate?: string;
+  status?: ServiceStatus;
+}
+
+export interface PaginationParams {
+  page: number;
+  pageSize: number;
+}
+
+// Service API functions
+export const serviceApi = {
+  // Get all services with filtering and pagination
+  getServices: async (
+    filters: ServiceFilterParams = {},
+    pagination: PaginationParams = { page: 1, pageSize: 10 }
+  ): Promise<ServiceListResponse> => {
+    try {
+      const params = {
+        ...filters,
+        ...pagination,
+      };
+
+      const response = await apiClient.get('/api/services', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      throw error;
+    }
+  },
+
+  // Get a single service by ID
+  getServiceById: async (id: string): Promise<ServiceWithRelations> => {
+    try {
+      const response = await apiClient.get(`/api/services/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching service with ID ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Create a new service
+  createService: async (service: Omit<Service, 'id' | 'createdAt' | 'updatedAt'>): Promise<Service> => {
+    try {
+      const response = await apiClient.post('/api/services', service);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating service:', error);
+      throw error;
+    }
+  },
+
+  // Update an existing service
+  updateService: async (id: string, service: Partial<Service>): Promise<Service> => {
+    try {
+      const response = await apiClient.put(`/api/services/${id}`, service);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating service with ID ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Delete a service
+  deleteService: async (id: string): Promise<void> => {
+    try {
+      await apiClient.delete(`/api/services/${id}`);
+    } catch (error) {
+      console.error(`Error deleting service with ID ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Validate services
+  validateServices: async (serviceIds: string[]): Promise<ServiceValidationResults> => {
+    try {
+      const response = await apiClient.post('/api/services/validate', { serviceIds });
+      return response.data;
+    } catch (error) {
+      console.error('Error validating services:', error);
+      throw error;
+    }
+  },
+
+  // Get service metrics
+  getServiceMetrics: async (
+    startDate?: string,
+    endDate?: string,
+    programId?: string
+  ): Promise<ServiceMetrics> => {
+    try {
+      const params = {
+        startDate,
+        endDate,
+        programId,
+      };
+
+      const response = await apiClient.get('/api/services/metrics', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching service metrics:', error);
+      throw error;
+    }
+  },
+
+  // Get unbilled services
+  getUnbilledServices: async (
+    pagination: PaginationParams = { page: 1, pageSize: 10 }
+  ): Promise<PaginatedResponse<ServiceSummary>> => {
+    try {
+      const response = await apiClient.get('/api/services/unbilled', { params: pagination });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching unbilled services:', error);
+      throw error;
+    }
+  },
+
+  // Get service types
+  getServiceTypes: async (): Promise<ServiceType[]> => {
+    try {
+      const response = await apiClient.get('/api/service-types');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching service types:', error);
+      throw error;
+    }
+  },
+
+  // Get service codes
+  getServiceCodes: async (serviceTypeId?: string): Promise<ServiceCode[]> => {
+    try {
+      const params = serviceTypeId ? { serviceTypeId } : undefined;
+      const response = await apiClient.get('/api/service-codes', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching service codes:', error);
+      throw error;
+    }
+  },
+
+  // Update service documentation status
+  updateDocumentationStatus: async (
+    id: string,
+    documentationStatus: DocumentationStatus
+  ): Promise<Service> => {
+    try {
+      const response = await apiClient.patch(`/api/services/${id}/documentation-status`, {
+        documentationStatus,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating documentation status for service ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Update service billing status
+  updateBillingStatus: async (
+    id: string,
+    billingStatus: BillingStatus,
+    claimId?: string
+  ): Promise<Service> => {
+    try {
+      const response = await apiClient.patch(`/api/services/${id}/billing-status`, {
+        billingStatus,
+        claimId,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating billing status for service ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Mark services as ready for billing
+  markServicesReadyForBilling: async (serviceIds: string[]): Promise<void> => {
+    try {
+      await apiClient.post('/api/services/mark-ready-for-billing', { serviceIds });
+    } catch (error) {
+      console.error('Error marking services as ready for billing:', error);
+      throw error;
+    }
+  },
+
+  // Add services to a claim
+  addServicesToClaim: async (serviceIds: string[], claimId: string): Promise<void> => {
+    try {
+      await apiClient.post('/api/services/add-to-claim', { serviceIds, claimId });
+    } catch (error) {
+      console.error('Error adding services to claim:', error);
+      throw error;
+    }
+  },
+
+  // Remove services from a claim
+  removeServicesFromClaim: async (serviceIds: string[]): Promise<void> => {
+    try {
+      await apiClient.post('/api/services/remove-from-claim', { serviceIds });
+    } catch (error) {
+      console.error('Error removing services from claim:', error);
+      throw error;
+    }
+  },
+
+  // Upload service documentation
+  uploadServiceDocumentation: async (
+    serviceId: string,
+    file: File
+  ): Promise<Document> => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await apiClient.post(
+        `/api/services/${serviceId}/documents`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error uploading documentation for service ${serviceId}:`, error);
+      throw error;
+    }
+  },
+
+  // Remove service documentation
+  removeServiceDocument: async (serviceId: string, documentId: string): Promise<void> => {
+    try {
+      await apiClient.delete(`/api/services/${serviceId}/documents/${documentId}`);
+    } catch (error) {
+      console.error(`Error removing document ${documentId} from service ${serviceId}:`, error);
+      throw error;
+    }
+  },
+  
+  // Get services by client
+  getServicesByClient: async (
+    clientId: string,
+    pagination: PaginationParams = { page: 1, pageSize: 10 }
+  ): Promise<ServiceListResponse> => {
+    try {
+      const params = {
+        clientId,
+        ...pagination,
+      };
+      
+      const response = await apiClient.get('/api/services', { params });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching services for client ${clientId}:`, error);
+      throw error;
+    }
+  },
+  
+  // Get services by authorization
+  getServicesByAuthorization: async (
+    authorizationId: string,
+    pagination: PaginationParams = { page: 1, pageSize: 10 }
+  ): Promise<ServiceListResponse> => {
+    try {
+      const params = {
+        authorizationId,
+        ...pagination,
+      };
+      
+      const response = await apiClient.get('/api/services', { params });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching services for authorization ${authorizationId}:`, error);
+      throw error;
+    }
+  },
+  
+  // Get denied services
+  getDeniedServices: async (
+    pagination: PaginationParams = { page: 1, pageSize: 10 }
+  ): Promise<ServiceListResponse> => {
+    try {
+      const params = {
+        billingStatus: BillingStatus.DENIED,
+        ...pagination,
+      };
+      
+      const response = await apiClient.get('/api/services', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching denied services:', error);
+      throw error;
+    }
+  }
+};
+
+// Utility functions
+export const serviceUtils = {
+  // Calculate service amount based on units and rate
+  calculateAmount: (units: number, rate: number): number => {
+    return Number((units * rate).toFixed(2));
+  },
+
+  // Format currency amount
+  formatCurrency: (amount: number): string => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  },
+
+  // Format date in displayable format
+  formatDate: (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  },
+  
+  // Format time in displayable format
+  formatTime: (timeString: string): string => {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours, 10);
+    const minute = minutes;
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const formattedHour = hour % 12 === 0 ? 12 : hour % 12;
+    
+    return `${formattedHour}:${minute} ${period}`;
+  },
+
+  // Get label for documentation status
+  getDocumentationStatusLabel: (status: DocumentationStatus): string => {
+    const labels = {
+      [DocumentationStatus.COMPLETE]: 'Complete',
+      [DocumentationStatus.INCOMPLETE]: 'Incomplete',
+    };
+    return labels[status];
+  },
+
+  // Get label for billing status
+  getBillingStatusLabel: (status: BillingStatus): string => {
+    const labels = {
+      [BillingStatus.UNBILLED]: 'Unbilled',
+      [BillingStatus.READY_FOR_BILLING]: 'Ready for Billing',
+      [BillingStatus.IN_CLAIM]: 'In Claim',
+      [BillingStatus.PAID]: 'Paid',
+      [BillingStatus.DENIED]: 'Denied',
+    };
+    return labels[status];
+  },
+
+  // Get color for billing status (for UI display)
+  getBillingStatusColor: (status: BillingStatus): string => {
+    const colors = {
+      [BillingStatus.UNBILLED]: 'gray',
+      [BillingStatus.READY_FOR_BILLING]: 'blue',
+      [BillingStatus.IN_CLAIM]: 'orange',
+      [BillingStatus.PAID]: 'green',
+      [BillingStatus.DENIED]: 'red',
+    };
+    return colors[status];
+  },
+
+  // Get color for documentation status (for UI display)
+  getDocumentationStatusColor: (status: DocumentationStatus): string => {
+    const colors = {
+      [DocumentationStatus.COMPLETE]: 'green',
+      [DocumentationStatus.INCOMPLETE]: 'red',
+    };
+    return colors[status];
+  },
+
+  // Check if a service is billable
+  isServiceBillable: (service: Service): boolean => {
+    return (
+      service.documentationStatus === DocumentationStatus.COMPLETE &&
+      (service.billingStatus === BillingStatus.UNBILLED ||
+        service.billingStatus === BillingStatus.READY_FOR_BILLING)
+    );
+  },
+  
+  // Get client full name
+  getClientFullName: (client: Client): string => {
+    return `${client.lastName}, ${client.firstName}`;
+  },
+  
+  // Get staff full name
+  getStaffFullName: (staff: Staff): string => {
+    return `${staff.firstName} ${staff.lastName}`;
+  },
+  
+  // Calculate authorization utilization percentage
+  calculateAuthorizationUtilization: (authorization: Authorization): number => {
+    if (authorization.authorizedUnits === 0) return 0;
+    return Math.min(
+      100,
+      Math.round((authorization.usedUnits / authorization.authorizedUnits) * 100)
+    );
+  },
+  
+  // Calculate remaining units in authorization
+  calculateRemainingUnits: (authorization: Authorization): number => {
+    return Math.max(0, authorization.authorizedUnits - authorization.usedUnits);
+  },
+  
+  // Check if authorization is about to expire (within 30 days)
+  isAuthorizationExpiringSoon: (authorization: Authorization): boolean => {
+    const endDate = new Date(authorization.endDate);
+    const today = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
+    
+    return endDate <= thirtyDaysFromNow && endDate >= today;
+  },
+  
+  // Calculate days until authorization expires
+  daysUntilAuthorizationExpires: (authorization: Authorization): number => {
+    const endDate = new Date(authorization.endDate);
+    const today = new Date();
+    const diffTime = endDate.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  },
+  
+  // Get document type icon based on mime type
+  getDocumentIcon: (mimeType: string): string => {
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType === 'application/pdf') return 'picture_as_pdf';
+    if (mimeType.includes('word')) return 'description';
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'table_chart';
+    return 'insert_drive_file';
+  },
+  
+  // Format file size in human-readable format
+  formatFileSize: (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  },
+  
+  // Calculate service duration in hours
+  calculateServiceDuration: (startTime: string, endTime: string): number => {
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    
+    const startMinutesTotal = startHours * 60 + startMinutes;
+    const endMinutesTotal = endHours * 60 + endMinutes;
+    
+    const durationMinutes = endMinutesTotal - startMinutesTotal;
+    return parseFloat((durationMinutes / 60).toFixed(2));
+  }
+};
+
+export default serviceApi;
