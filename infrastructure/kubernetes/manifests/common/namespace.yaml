@@ -1,0 +1,22 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hcbs
+  labels:
+    name: hcbs
+    part-of: hcbs-revenue-management
+    environment: ${ENVIRONMENT}
+  annotations:
+    description: "HCBS Revenue Management System application namespace"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+    part-of: hcbs-revenue-management
+    environment: ${ENVIRONMENT}
+  annotations:
+    description: "Monitoring tools namespace for HCBS Revenue Management System"
