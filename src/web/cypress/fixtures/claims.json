@@ -1,0 +1,657 @@
+/**
+ * Claim-related interfaces and utilities for the HCBS Revenue Management System
+ * @version 1.0.0
+ */
+
+import { UUID } from '../types/common';
+
+/**
+ * Enum for claim status values
+ */
+export enum ClaimStatus {
+  DRAFT = 'DRAFT',
+  VALIDATED = 'VALIDATED',
+  SUBMITTED = 'SUBMITTED',
+  ACKNOWLEDGED = 'ACKNOWLEDGED',
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  DENIED = 'DENIED',
+  APPEALED = 'APPEALED',
+}
+
+/**
+ * Enum for claim types
+ */
+export enum ClaimType {
+  ORIGINAL = 'ORIGINAL',
+  CORRECTED = 'CORRECTED',
+  REPLACEMENT = 'REPLACEMENT',
+  VOID = 'VOID',
+  APPEAL = 'APPEAL',
+}
+
+/**
+ * Enum for claim submission methods
+ */
+export enum SubmissionMethod {
+  ELECTRONIC = 'ELECTRONIC',
+  PAPER = 'PAPER',
+  PORTAL = 'PORTAL',
+  MANUAL = 'MANUAL',
+}
+
+/**
+ * Enum for denial reasons
+ */
+export enum DenialReason {
+  DUPLICATE_CLAIM = 'DUPLICATE_CLAIM',
+  SERVICE_NOT_COVERED = 'SERVICE_NOT_COVERED',
+  SERVICE_NOT_AUTHORIZED = 'SERVICE_NOT_AUTHORIZED',
+  INVALID_PROCEDURE_CODE = 'INVALID_PROCEDURE_CODE',
+  MISSING_INFORMATION = 'MISSING_INFORMATION',
+  UNTIMELY_FILING = 'UNTIMELY_FILING',
+  CLIENT_INELIGIBLE = 'CLIENT_INELIGIBLE',
+  OTHER = 'OTHER',
+}
+
+/**
+ * Interface for a basic Claim entity
+ */
+export interface Claim {
+  id: UUID;
+  claimNumber: string;
+  externalClaimId?: string | null;
+  clientId: UUID;
+  payerId: UUID;
+  claimType: ClaimType;
+  claimStatus: ClaimStatus;
+  totalAmount: number;
+  serviceStartDate: string;
+  serviceEndDate: string;
+  submissionDate?: string | null;
+  submissionMethod?: SubmissionMethod | null;
+  adjudicationDate?: string | null;
+  denialReason?: DenialReason | null;
+  denialDetails?: string | null;
+  adjustmentCodes?: Record<string, string> | null;
+  originalClaimId?: UUID | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: UUID;
+  updatedBy: UUID;
+}
+
+/**
+ * Interface for a simple Client entity
+ */
+export interface Client {
+  id: UUID;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  medicaidId?: string;
+  status: string;
+}
+
+/**
+ * Interface for a simple Payer entity
+ */
+export interface Payer {
+  id: UUID;
+  name: string;
+  type: string;
+  isElectronic: boolean;
+  status: string;
+}
+
+/**
+ * Interface for a simple Service entity
+ */
+export interface Service {
+  id: UUID;
+  clientId: UUID;
+  serviceDate: string;
+  serviceType: string;
+  units: number;
+  rate?: number;
+  amount: number;
+  documentationStatus: string;
+  billingStatus: string;
+}
+
+/**
+ * Interface for claim status history entries
+ */
+export interface ClaimStatusHistory {
+  id: UUID;
+  claimId: UUID;
+  status: ClaimStatus;
+  timestamp: string;
+  notes?: string | null;
+  userId?: UUID | null;
+  userName?: string | null;
+}
+
+/**
+ * Extended Claim interface with related entities
+ */
+export interface ClaimWithRelations extends Claim {
+  client: Client;
+  payer: Payer;
+  originalClaim?: Claim | null;
+  services: Service[];
+  statusHistory: ClaimStatusHistory[];
+}
+
+/**
+ * Interface for claim summaries used in listings
+ */
+export interface ClaimSummary {
+  id: UUID;
+  claimNumber: string;
+  clientId: UUID;
+  clientName: string;
+  payerId: UUID;
+  payerName: string;
+  claimStatus: ClaimStatus;
+  totalAmount: number;
+  serviceStartDate: string;
+  serviceEndDate: string;
+  submissionDate: string;
+  claimAge: number;
+}
+
+/**
+ * Interface for paginated claim list responses
+ */
+export interface ClaimListResponse {
+  items: {
+    id: UUID;
+    claimNumber: string;
+    clientName: string;
+    payerName: string;
+    claimStatus: ClaimStatus;
+    totalAmount: number;
+    serviceStartDate: string;
+    submissionDate: string;
+    claimAge: number;
+  }[];
+  totalItems: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * Interface for claim services junction
+ */
+export interface ClaimService {
+  id: UUID;
+  claimId: UUID;
+  serviceId: UUID;
+  serviceLineNumber: number;
+  billedUnits: number;
+  billedAmount: number;
+  service: Service;
+}
+
+/**
+ * Interface for validation error or warning
+ */
+export interface ValidationIssue {
+  code: string;
+  message: string;
+  field: string;
+  context?: Record<string, any>;
+}
+
+/**
+ * Interface for claim validation result
+ */
+export interface ClaimValidationResult {
+  claimId: UUID;
+  isValid: boolean;
+  errors: ValidationIssue[];
+  warnings: ValidationIssue[];
+}
+
+/**
+ * Interface for batch validation results
+ */
+export interface ClaimValidationResults {
+  results: ClaimValidationResult[];
+  isValid: boolean;
+  totalErrors: number;
+  totalWarnings: number;
+}
+
+/**
+ * Interface for batch processing result
+ */
+export interface ClaimBatchResult {
+  totalProcessed: number;
+  successCount: number;
+  errorCount: number;
+  errors: {
+    claimId: UUID;
+    message: string;
+  }[];
+  processedClaims: UUID[];
+}
+
+/**
+ * Interface for claim lifecycle
+ */
+export interface ClaimLifecycle {
+  claim: ClaimWithRelations;
+  timeline: {
+    status: ClaimStatus;
+    timestamp: string;
+    notes?: string | null;
+    userId?: UUID | null;
+    userName?: string | null;
+  }[];
+  relatedClaims: Claim[];
+}
+
+/**
+ * Interface for claim metrics
+ */
+export interface ClaimMetrics {
+  totalClaims: number;
+  totalAmount: number;
+  statusBreakdown: {
+    status: ClaimStatus;
+    count: number;
+    amount: number;
+  }[];
+  agingBreakdown: {
+    range: string;
+    count: number;
+    amount: number;
+  }[];
+  denialRate: number;
+  averageProcessingTime: number;
+  claimsByPayer: {
+    payerId: UUID;
+    payerName: string;
+    count: number;
+    amount: number;
+  }[];
+}
+
+/**
+ * Interface for claim aging report
+ */
+export interface ClaimAgingReport {
+  agingBuckets: {
+    range: string;
+    minDays: number;
+    maxDays?: number | null;
+    count: number;
+    amount: number;
+  }[];
+  totalAmount: number;
+  totalClaims: number;
+  averageAge: number;
+}
+
+/**
+ * DTO for creating a new claim
+ */
+export interface CreateClaimDto {
+  clientId: UUID;
+  payerId: UUID;
+  claimType: ClaimType;
+  serviceIds: UUID[];
+  originalClaimId?: UUID | null;
+  notes?: string | null;
+}
+
+/**
+ * DTO for updating an existing claim
+ */
+export interface UpdateClaimDto {
+  payerId?: UUID;
+  serviceIds?: UUID[];
+  notes?: string | null;
+}
+
+/**
+ * DTO for submitting a claim
+ */
+export interface SubmitClaimDto {
+  submissionMethod: SubmissionMethod;
+  submissionDate: string;
+  externalClaimId?: string | null;
+  notes?: string | null;
+}
+
+/**
+ * DTO for batch submitting claims
+ */
+export interface BatchSubmitClaimsDto {
+  claimIds: UUID[];
+  submissionMethod: SubmissionMethod;
+  submissionDate: string;
+  notes?: string | null;
+}
+
+/**
+ * DTO for updating claim status
+ */
+export interface UpdateClaimStatusDto {
+  status: ClaimStatus;
+  adjudicationDate?: string | null;
+  denialReason?: DenialReason | null;
+  denialDetails?: string | null;
+  adjustmentCodes?: Record<string, string> | null;
+  notes?: string | null;
+}
+
+/**
+ * DTO for appealing a claim
+ */
+export interface AppealClaimDto {
+  appealReason: string;
+  supportingDocuments?: UUID[];
+  notes?: string | null;
+}
+
+/**
+ * DTO for voiding a claim
+ */
+export interface VoidClaimDto {
+  reason: string;
+  notes?: string | null;
+}
+
+/**
+ * Interface for pagination parameters
+ */
+export interface PaginationParams {
+  page: number;
+  limit: number;
+  totalItems?: number;
+  totalPages?: number;
+}
+
+/**
+ * Utility function to calculate claim age in days
+ * @param submissionDate The submission date of the claim
+ * @returns The age of the claim in days
+ */
+export function calculateClaimAge(submissionDate: string): number {
+  const submission = new Date(submissionDate);
+  const today = new Date();
+  const diffTime = Math.abs(today.getTime() - submission.getTime());
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Utility function to calculate the denial rate for a set of claims
+ * @param claims Array of claims
+ * @returns The denial rate as a percentage
+ */
+export function calculateDenialRate(claims: Claim[]): number {
+  if (claims.length === 0) return 0;
+  
+  const deniedClaims = claims.filter(claim => claim.claimStatus === ClaimStatus.DENIED);
+  return (deniedClaims.length / claims.length) * 100;
+}
+
+/**
+ * Utility function to format currency values
+ * @param amount The amount to format
+ * @returns Formatted currency string
+ */
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+}
+
+/**
+ * Utility function to group claims by status
+ * @param claims Array of claims
+ * @returns Object with claims grouped by status
+ */
+export function groupClaimsByStatus(claims: Claim[]): Record<ClaimStatus, Claim[]> {
+  return claims.reduce((groups, claim) => {
+    const status = claim.claimStatus;
+    if (!groups[status]) {
+      groups[status] = [];
+    }
+    groups[status].push(claim);
+    return groups;
+  }, {} as Record<ClaimStatus, Claim[]>);
+}
+
+/**
+ * Utility function to create claim aging buckets
+ * @param claims Array of claims
+ * @returns Claim aging report
+ */
+export function generateClaimAgingReport(claims: ClaimSummary[]): ClaimAgingReport {
+  const buckets = [
+    { range: '0-30 days', minDays: 0, maxDays: 30, count: 0, amount: 0 },
+    { range: '31-60 days', minDays: 31, maxDays: 60, count: 0, amount: 0 },
+    { range: '61-90 days', minDays: 61, maxDays: 90, count: 0, amount: 0 },
+    { range: '90+ days', minDays: 91, maxDays: null, count: 0, amount: 0 },
+  ];
+
+  let totalAmount = 0;
+  let totalAge = 0;
+
+  claims.forEach(claim => {
+    totalAmount += claim.totalAmount;
+    totalAge += claim.claimAge;
+
+    for (const bucket of buckets) {
+      if (
+        claim.claimAge >= bucket.minDays && 
+        (bucket.maxDays === null || claim.claimAge <= bucket.maxDays)
+      ) {
+        bucket.count += 1;
+        bucket.amount += claim.totalAmount;
+        break;
+      }
+    }
+  });
+
+  return {
+    agingBuckets: buckets,
+    totalAmount,
+    totalClaims: claims.length,
+    averageAge: claims.length > 0 ? totalAge / claims.length : 0,
+  };
+}
+
+/**
+ * Utility function to validate a claim
+ * @param claim The claim to validate
+ * @param services The services associated with the claim
+ * @returns Validation result
+ */
+export function validateClaim(
+  claim: Partial<Claim>, 
+  services: Service[]
+): ClaimValidationResult {
+  const errors: ValidationIssue[] = [];
+  const warnings: ValidationIssue[] = [];
+  
+  // Example validation logic - in a real app, this would be more comprehensive
+  if (!claim.clientId) {
+    errors.push({
+      code: 'MISSING_CLIENT',
+      message: 'Client ID is required',
+      field: 'clientId',
+    });
+  }
+  
+  if (!claim.payerId) {
+    errors.push({
+      code: 'MISSING_PAYER',
+      message: 'Payer ID is required',
+      field: 'payerId',
+    });
+  }
+  
+  if (!services || services.length === 0) {
+    errors.push({
+      code: 'NO_SERVICES',
+      message: 'Claim must have at least one service',
+      field: 'services',
+    });
+  }
+  
+  if (claim.totalAmount && claim.totalAmount > 5000) {
+    warnings.push({
+      code: 'HIGH_AMOUNT',
+      message: 'Claim amount exceeds typical threshold',
+      field: 'totalAmount',
+      context: {
+        threshold: 5000,
+        amount: claim.totalAmount,
+      },
+    });
+  }
+  
+  return {
+    claimId: claim.id as UUID,
+    isValid: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
+/**
+ * Utility function to summarize a claim for display in lists
+ * @param claim The full claim object
+ * @param client The client associated with the claim
+ * @param payer The payer associated with the claim
+ * @returns A claim summary object
+ */
+export function createClaimSummary(
+  claim: Claim,
+  client: Client,
+  payer: Payer
+): ClaimSummary {
+  return {
+    id: claim.id,
+    claimNumber: claim.claimNumber,
+    clientId: client.id,
+    clientName: `${client.lastName}, ${client.firstName}`,
+    payerId: payer.id,
+    payerName: payer.name,
+    claimStatus: claim.claimStatus,
+    totalAmount: claim.totalAmount,
+    serviceStartDate: claim.serviceStartDate,
+    serviceEndDate: claim.serviceEndDate,
+    submissionDate: claim.submissionDate || '',
+    claimAge: claim.submissionDate ? calculateClaimAge(claim.submissionDate) : 0,
+  };
+}
+
+/**
+ * Calculate total amount for a set of services
+ * @param services Array of services
+ * @returns Total amount
+ */
+export function calculateTotalAmount(services: Service[]): number {
+  return services.reduce((total, service) => total + service.amount, 0);
+}
+
+/**
+ * Get the display text for a claim status
+ * @param status The claim status enum value
+ * @returns Human-readable status text
+ */
+export function getClaimStatusDisplayText(status: ClaimStatus): string {
+  const statusMap: Record<ClaimStatus, string> = {
+    [ClaimStatus.DRAFT]: 'Draft',
+    [ClaimStatus.VALIDATED]: 'Validated',
+    [ClaimStatus.SUBMITTED]: 'Submitted',
+    [ClaimStatus.ACKNOWLEDGED]: 'Acknowledged',
+    [ClaimStatus.PENDING]: 'Pending',
+    [ClaimStatus.PAID]: 'Paid',
+    [ClaimStatus.DENIED]: 'Denied',
+    [ClaimStatus.APPEALED]: 'Appealed',
+  };
+  
+  return statusMap[status] || status;
+}
+
+/**
+ * Get CSS class for a claim status (for styling)
+ * @param status The claim status enum value
+ * @returns CSS class name
+ */
+export function getClaimStatusClass(status: ClaimStatus): string {
+  const classMap: Record<ClaimStatus, string> = {
+    [ClaimStatus.DRAFT]: 'status-draft',
+    [ClaimStatus.VALIDATED]: 'status-validated',
+    [ClaimStatus.SUBMITTED]: 'status-submitted',
+    [ClaimStatus.ACKNOWLEDGED]: 'status-acknowledged',
+    [ClaimStatus.PENDING]: 'status-pending',
+    [ClaimStatus.PAID]: 'status-success',
+    [ClaimStatus.DENIED]: 'status-error',
+    [ClaimStatus.APPEALED]: 'status-warning',
+  };
+  
+  return classMap[status] || '';
+}
+
+/**
+ * Determine if a claim can be edited based on its status
+ * @param claim The claim to check
+ * @returns Boolean indicating if the claim can be edited
+ */
+export function canEditClaim(claim: Claim): boolean {
+  const editableStatuses = [
+    ClaimStatus.DRAFT,
+    ClaimStatus.VALIDATED,
+  ];
+  
+  return editableStatuses.includes(claim.claimStatus);
+}
+
+/**
+ * Determine if a claim can be submitted based on its status
+ * @param claim The claim to check
+ * @returns Boolean indicating if the claim can be submitted
+ */
+export function canSubmitClaim(claim: Claim): boolean {
+  const submittableStatuses = [
+    ClaimStatus.DRAFT,
+    ClaimStatus.VALIDATED,
+  ];
+  
+  return submittableStatuses.includes(claim.claimStatus);
+}
+
+/**
+ * Determine if a claim can be voided based on its status
+ * @param claim The claim to check
+ * @returns Boolean indicating if the claim can be voided
+ */
+export function canVoidClaim(claim: Claim): boolean {
+  const voidableStatuses = [
+    ClaimStatus.SUBMITTED,
+    ClaimStatus.ACKNOWLEDGED,
+    ClaimStatus.PENDING,
+  ];
+  
+  return voidableStatuses.includes(claim.claimStatus);
+}
+
+/**
+ * Determine if a claim can be appealed based on its status
+ * @param claim The claim to check
+ * @returns Boolean indicating if the claim can be appealed
+ */
+export function canAppealClaim(claim: Claim): boolean {
+  return claim.claimStatus === ClaimStatus.DENIED;
+}
