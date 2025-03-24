@@ -1,0 +1,1015 @@
+import axios from 'axios'; // v1.4.0
+import { format, parseISO, isAfter } from 'date-fns'; // v2.30.0
+
+// Report Definition Interfaces
+export interface DateRange {
+  startDate: string;
+  endDate: string;
+}
+
+export interface ReportParameters {
+  timeFrame: 'LAST_30_DAYS' | 'CUSTOM' | 'CURRENT_YEAR' | 'PREVIOUS_MONTH' | 'YEAR_TO_DATE';
+  dateRange: DateRange | null;
+  comparisonType: 'NONE' | 'PREVIOUS_PERIOD' | 'YEAR_OVER_YEAR';
+  comparisonDateRange: DateRange | null;
+  programIds: string[];
+  payerIds: string[];
+  facilityIds: string[];
+  serviceTypeIds: string[];
+  asOfDate: string | null;
+  groupBy: string;
+  sortBy: string;
+  limit: number;
+  customParameters: Record<string, any>;
+}
+
+export interface Visualization {
+  id: string;
+  title: string;
+  type: 'BAR' | 'LINE' | 'PIE' | 'AREA' | 'TABLE';
+  dataKey: string;
+  xAxis?: {
+    key: string;
+    label: string;
+  };
+  yAxis?: {
+    key: string;
+    label: string;
+  };
+  series: Array<{
+    key: string;
+    label: string;
+    color?: string;
+  }>;
+  options: Record<string, any>;
+}
+
+export interface ReportDefinition {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  category: 'REVENUE' | 'CLAIMS' | 'FINANCIAL' | 'OPERATIONAL';
+  parameters: ReportParameters;
+  visualizations: Visualization[];
+  isTemplate: boolean;
+  isSystem: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
+// Report Instance Interfaces
+export interface ReportInstance {
+  id: string;
+  reportDefinitionId: string;
+  name: string;
+  parameters: ReportParameters;
+  status: 'COMPLETED' | 'GENERATING' | 'FAILED';
+  generatedAt: string | null;
+  expiresAt: string | null;
+  fileUrls: Record<string, string>;
+  errorMessage: string | null;
+  createdBy: string;
+}
+
+// Scheduled Report Interfaces
+export interface Recipient {
+  email: string;
+  userId: string;
+  name: string;
+}
+
+export interface ScheduledReport {
+  id: string;
+  reportDefinitionId: string;
+  name: string;
+  description: string;
+  parameters: ReportParameters;
+  frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
+  dayOfWeek: number | null;
+  dayOfMonth: number | null;
+  time: string;
+  formats: Array<'PDF' | 'EXCEL' | 'CSV' | 'JSON'>;
+  recipients: Recipient[];
+  isActive: boolean;
+  lastRunAt: string | null;
+  nextRunAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
+// Report Data Interfaces
+export interface ReportMetadata {
+  reportName: string;
+  reportType: string;
+  generatedAt: string;
+  generatedBy: {
+    id: string;
+    name: string;
+  };
+  parameters: ReportParameters;
+  organization: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface SummaryMetric {
+  label: string;
+  value: number;
+  previousValue: number | null;
+  change: number | null;
+  trend: 'UP' | 'DOWN' | null;
+  format: 'currency' | 'percentage' | 'number';
+}
+
+export interface ReportDataResponse {
+  metadata: ReportMetadata;
+  summaryMetrics: SummaryMetric[];
+  visualizations: Visualization[];
+  data: Record<string, any>;
+}
+
+export interface GenerateReportRequest {
+  reportDefinitionId: string;
+  name?: string;
+  parameters: ReportParameters;
+}
+
+export interface GenerateReportResponse {
+  reportInstanceId: string;
+  reportDefinitionId: string;
+  status: 'GENERATING' | 'COMPLETED' | 'FAILED';
+  message: string;
+}
+
+export interface ReportListItem {
+  id: string;
+  name: string;
+  reportType: string;
+  category: string;
+  status: 'COMPLETED' | 'GENERATING' | 'FAILED';
+  generatedAt: string;
+  createdBy: string;
+}
+
+export interface ReportListResponse {
+  items: ReportListItem[];
+  totalItems: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface ScheduleReportRequest {
+  reportDefinitionId: string;
+  name: string;
+  description?: string;
+  parameters: ReportParameters;
+  frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
+  dayOfWeek?: number;
+  dayOfMonth?: number;
+  time: string;
+  formats: Array<'PDF' | 'EXCEL' | 'CSV' | 'JSON'>;
+  recipients: Recipient[];
+}
+
+// Error handling
+export class ReportServiceError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number = 500,
+    public errorCode: string = 'REPORT_SERVICE_ERROR'
+  ) {
+    super(message);
+    this.name = 'ReportServiceError';
+  }
+}
+
+// Report Service class
+export class ReportService {
+  private baseUrl: string;
+  private apiVersion: string;
+  private cache: Map<string, { data: any; timestamp: number }> = new Map();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+  constructor(baseUrl: string = '/api', apiVersion: string = 'v1') {
+    this.baseUrl = baseUrl;
+    this.apiVersion = apiVersion;
+  }
+
+  // Report Definition Methods
+  public async getReportDefinitions(
+    category?: string,
+    searchTerm?: string,
+    includeSystem: boolean = true,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<{ items: ReportDefinition[]; totalItems: number; page: number; pageSize: number; totalPages: number }> {
+    try {
+      const params = new URLSearchParams();
+      if (category) params.append('category', category);
+      if (searchTerm) params.append('search', searchTerm);
+      params.append('includeSystem', includeSystem.toString());
+      params.append('page', page.toString());
+      params.append('pageSize', pageSize.toString());
+
+      const response = await axios.get<{ items: ReportDefinition[]; totalItems: number; page: number; pageSize: number; totalPages: number }>(
+        `${this.baseUrl}/${this.apiVersion}/reports/definitions`,
+        { params }
+      );
+
+      return response.data;
+    } catch (error) {
+      this.handleError(error, 'Failed to fetch report definitions');
+      throw error;
+    }
+  }
+
+  public async getReportDefinition(id: string): Promise<ReportDefinition> {
+    try {
+      const response = await axios.get<ReportDefinition>(`${this.baseUrl}/${this.apiVersion}/reports/definitions/${id}`);
+      return response.data;
+    } catch (error) {
+      this.handleError(error, `Failed to fetch report definition with ID: ${id}`);
+      throw error;
+    }
+  }
+
+  public async createReportDefinition(reportDefinition: Omit<ReportDefinition, 'id' | 'createdAt' | 'updatedAt'>): Promise<ReportDefinition> {
+    try {
+      const response = await axios.post<ReportDefinition>(`${this.baseUrl}/${this.apiVersion}/reports/definitions`, reportDefinition);
+      return response.data;
+    } catch (error) {
+      this.handleError(error, 'Failed to create report definition');
+      throw error;
+    }
+  }
+
+  public async updateReportDefinition(id: string, reportDefinition: Partial<ReportDefinition>): Promise<ReportDefinition> {
+    try {
+      const response = await axios.put<ReportDefinition>(`${this.baseUrl}/${this.apiVersion}/reports/definitions/${id}`, reportDefinition);
+      return response.data;
+    } catch (error) {
+      this.handleError(error, `Failed to update report definition with ID: ${id}`);
+      throw error;
+    }
+  }
+
+  public async deleteReportDefinition(id: string): Promise<void> {
+    try {
+      await axios.delete(`${this.baseUrl}/${this.apiVersion}/reports/definitions/${id}`);
+    } catch (error) {
+      this.handleError(error, `Failed to delete report definition with ID: ${id}`);
+      throw error;
+    }
+  }
+
+  // Report Instance Methods
+  public async getReportInstances(
+    reportDefinitionId?: string,
+    status?: 'COMPLETED' | 'GENERATING' | 'FAILED',
+    dateFrom?: string,
+    dateTo?: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<ReportListResponse> {
+    try {
+      const params = new URLSearchParams();
+      if (reportDefinitionId) params.append('reportDefinitionId', reportDefinitionId);
+      if (status) params.append('status', status);
+      if (dateFrom) params.append('dateFrom', dateFrom);
+      if (dateTo) params.append('dateTo', dateTo);
+      params.append('page', page.toString());
+      params.append('pageSize', pageSize.toString());
+
+      const response = await axios.get<ReportListResponse>(`${this.baseUrl}/${this.apiVersion}/reports/instances`, { params });
+      return response.data;
+    } catch (error) {
+      this.handleError(error, 'Failed to fetch report instances');
+      throw error;
+    }
+  }
+
+  public async getReportInstance(id: string): Promise<ReportInstance> {
+    try {
+      const response = await axios.get<ReportInstance>(`${this.baseUrl}/${this.apiVersion}/reports/instances/${id}`);
+      return response.data;
+    } catch (error) {
+      this.handleError(error, `Failed to fetch report instance with ID: ${id}`);
+      throw error;
+    }
+  }
+
+  public async generateReport(request: GenerateReportRequest): Promise<GenerateReportResponse> {
+    try {
+      // Validate parameters before submission
+      const validationErrors = this.validateReportParameters(request.parameters);
+      if (validationErrors.length > 0) {
+        throw new ReportServiceError(`Invalid report parameters: ${validationErrors.join(', ')}`, 400, 'INVALID_PARAMETERS');
+      }
+      
+      const response = await axios.post<GenerateReportResponse>(`${this.baseUrl}/${this.apiVersion}/reports/generate`, request);
+      return response.data;
+    } catch (error) {
+      this.handleError(error, 'Failed to generate report');
+      throw error;
+    }
+  }
+
+  public async getReportData(instanceId: string): Promise<ReportDataResponse> {
+    const cacheKey = `reportData_${instanceId}`;
+    const cachedData = this.getCachedData<ReportDataResponse>(cacheKey);
+    
+    if (cachedData) {
+      return cachedData;
+    }
+    
+    try {
+      const response = await axios.get<ReportDataResponse>(`${this.baseUrl}/${this.apiVersion}/reports/data/${instanceId}`);
+      this.setCachedData(cacheKey, response.data);
+      return response.data;
+    } catch (error) {
+      this.handleError(error, `Failed to fetch report data for instance ID: ${instanceId}`);
+      throw error;
+    }
+  }
+
+  public async deleteReportInstance(id: string): Promise<void> {
+    try {
+      await axios.delete(`${this.baseUrl}/${this.apiVersion}/reports/instances/${id}`);
+      // Clear cache for this instance
+      this.cache.delete(`reportData_${id}`);
+    } catch (error) {
+      this.handleError(error, `Failed to delete report instance with ID: ${id}`);
+      throw error;
+    }
+  }
+
+  // Scheduled Report Methods
+  public async getScheduledReports(
+    reportDefinitionId?: string,
+    isActive?: boolean,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<{ items: ScheduledReport[]; totalItems: number; page: number; pageSize: number; totalPages: number }> {
+    try {
+      const params = new URLSearchParams();
+      if (reportDefinitionId) params.append('reportDefinitionId', reportDefinitionId);
+      if (isActive !== undefined) params.append('isActive', isActive.toString());
+      params.append('page', page.toString());
+      params.append('pageSize', pageSize.toString());
+
+      const response = await axios.get<{ items: ScheduledReport[]; totalItems: number; page: number; pageSize: number; totalPages: number }>(
+        `${this.baseUrl}/${this.apiVersion}/reports/scheduled`,
+        { params }
+      );
+
+      return response.data;
+    } catch (error) {
+      this.handleError(error, 'Failed to fetch scheduled reports');
+      throw error;
+    }
+  }
+
+  public async getScheduledReport(id: string): Promise<ScheduledReport> {
+    try {
+      const response = await axios.get<ScheduledReport>(`${this.baseUrl}/${this.apiVersion}/reports/scheduled/${id}`);
+      return response.data;
+    } catch (error) {
+      this.handleError(error, `Failed to fetch scheduled report with ID: ${id}`);
+      throw error;
+    }
+  }
+
+  public async scheduleReport(request: ScheduleReportRequest): Promise<ScheduledReport> {
+    try {
+      // Validate parameters before submission
+      const validationErrors = this.validateReportParameters(request.parameters);
+      if (validationErrors.length > 0) {
+        throw new ReportServiceError(`Invalid report parameters: ${validationErrors.join(', ')}`, 400, 'INVALID_PARAMETERS');
+      }
+      
+      // Validate scheduling parameters
+      this.validateScheduleParameters(request);
+      
+      const response = await axios.post<ScheduledReport>(`${this.baseUrl}/${this.apiVersion}/reports/scheduled`, request);
+      return response.data;
+    } catch (error) {
+      this.handleError(error, 'Failed to schedule report');
+      throw error;
+    }
+  }
+
+  public async updateScheduledReport(id: string, request: Partial<ScheduleReportRequest>): Promise<ScheduledReport> {
+    try {
+      // Validate parameters if they're being updated
+      if (request.parameters) {
+        const validationErrors = this.validateReportParameters(request.parameters);
+        if (validationErrors.length > 0) {
+          throw new ReportServiceError(`Invalid report parameters: ${validationErrors.join(', ')}`, 400, 'INVALID_PARAMETERS');
+        }
+      }
+      
+      // Validate scheduling parameters if relevant fields are being updated
+      if (request.frequency || request.dayOfWeek !== undefined || request.dayOfMonth !== undefined) {
+        this.validateScheduleParameters(request as ScheduleReportRequest);
+      }
+      
+      const response = await axios.put<ScheduledReport>(`${this.baseUrl}/${this.apiVersion}/reports/scheduled/${id}`, request);
+      return response.data;
+    } catch (error) {
+      this.handleError(error, `Failed to update scheduled report with ID: ${id}`);
+      throw error;
+    }
+  }
+
+  public async toggleScheduledReport(id: string, isActive: boolean): Promise<ScheduledReport> {
+    try {
+      const response = await axios.patch<ScheduledReport>(`${this.baseUrl}/${this.apiVersion}/reports/scheduled/${id}/toggle`, { isActive });
+      return response.data;
+    } catch (error) {
+      this.handleError(error, `Failed to toggle scheduled report with ID: ${id}`);
+      throw error;
+    }
+  }
+
+  public async deleteScheduledReport(id: string): Promise<void> {
+    try {
+      await axios.delete(`${this.baseUrl}/${this.apiVersion}/reports/scheduled/${id}`);
+    } catch (error) {
+      this.handleError(error, `Failed to delete scheduled report with ID: ${id}`);
+      throw error;
+    }
+  }
+
+  // Report Export Methods
+  public getReportExportUrl(instanceId: string, format: 'PDF' | 'EXCEL' | 'CSV' | 'JSON'): string {
+    return `${this.baseUrl}/${this.apiVersion}/reports/export/${instanceId}?format=${format}`;
+  }
+
+  public async exportReport(instanceId: string, format: 'PDF' | 'EXCEL' | 'CSV' | 'JSON'): Promise<Blob> {
+    try {
+      const response = await axios.get(`${this.baseUrl}/${this.apiVersion}/reports/export/${instanceId}`, {
+        params: { format },
+        responseType: 'blob'
+      });
+      return response.data;
+    } catch (error) {
+      this.handleError(error, `Failed to export report with ID: ${instanceId} in ${format} format`);
+      throw error;
+    }
+  }
+
+  // Methods for working with specific report types
+  
+  // Revenue by Program report utilities
+  public processRevenueByProgramData(reportData: ReportDataResponse): {
+    totalRevenue: number;
+    previousTotalRevenue: number | null;
+    revenueChange: number | null;
+    programs: Array<{
+      programId: string;
+      programName: string;
+      revenue: number;
+      previousRevenue: number | null;
+      change: number | null;
+      percentOfTotal: number;
+    }>;
+  } {
+    if (!reportData || !reportData.data || !reportData.data.programData) {
+      throw new ReportServiceError('Invalid report data format');
+    }
+
+    const programData = reportData.data.programData;
+    
+    let totalRevenue = 0;
+    let previousTotalRevenue = 0;
+    let hasPreviousPeriod = false;
+
+    // Calculate totals
+    programData.forEach((program: any) => {
+      totalRevenue += program.revenue || 0;
+      if (program.previousRevenue !== undefined && program.previousRevenue !== null) {
+        previousTotalRevenue += program.previousRevenue;
+        hasPreviousPeriod = true;
+      }
+    });
+
+    // Calculate percentages and format data
+    const programs = programData.map((program: any) => ({
+      programId: program.programId,
+      programName: program.programName,
+      revenue: program.revenue,
+      previousRevenue: program.previousRevenue !== undefined ? program.previousRevenue : null,
+      change: program.change !== undefined ? program.change : null,
+      percentOfTotal: totalRevenue > 0 ? ((program.revenue / totalRevenue) * 100) : 0,
+    }));
+
+    return {
+      totalRevenue,
+      previousTotalRevenue: hasPreviousPeriod ? previousTotalRevenue : null,
+      revenueChange: hasPreviousPeriod ? ((totalRevenue - previousTotalRevenue) / previousTotalRevenue) * 100 : null,
+      programs,
+    };
+  }
+
+  // Claims Status report utilities
+  public processClaimsStatusData(reportData: ReportDataResponse): {
+    totalClaims: number;
+    totalAmount: number;
+    statusBreakdown: Array<{
+      status: string;
+      count: number;
+      amount: number;
+      percentOfTotal: number;
+    }>;
+    denialRate: number;
+  } {
+    if (!reportData || !reportData.data || !reportData.data.claimsByStatus) {
+      throw new ReportServiceError('Invalid report data format');
+    }
+
+    const claimsData = reportData.data.claimsByStatus;
+    
+    let totalClaims = 0;
+    let totalAmount = 0;
+    let deniedClaims = 0;
+
+    // Calculate totals
+    claimsData.forEach((status: any) => {
+      totalClaims += status.count || 0;
+      totalAmount += status.amount || 0;
+      if (status.status === 'DENIED') {
+        deniedClaims = status.count || 0;
+      }
+    });
+
+    // Calculate percentages and format data
+    const statusBreakdown = claimsData.map((status: any) => ({
+      status: status.status,
+      count: status.count,
+      amount: status.amount,
+      percentOfTotal: totalClaims > 0 ? ((status.count / totalClaims) * 100) : 0,
+    }));
+
+    return {
+      totalClaims,
+      totalAmount,
+      statusBreakdown,
+      denialRate: totalClaims > 0 ? ((deniedClaims / totalClaims) * 100) : 0,
+    };
+  }
+
+  // Aging Accounts Receivable report utilities
+  public processAgingReceivablesData(reportData: ReportDataResponse): {
+    totalReceivables: number;
+    agingBuckets: Array<{
+      bucket: string;
+      amount: number;
+      percentOfTotal: number;
+      claimCount: number;
+    }>;
+    daysOutstanding: number;
+  } {
+    if (!reportData || !reportData.data || !reportData.data.agingData) {
+      throw new ReportServiceError('Invalid report data format');
+    }
+
+    const agingData = reportData.data.agingData;
+    
+    let totalReceivables = 0;
+    let weightedDays = 0;
+    let totalClaims = 0;
+
+    // Calculate totals
+    agingData.forEach((bucket: any) => {
+      totalReceivables += bucket.amount || 0;
+      totalClaims += bucket.claimCount || 0;
+      
+      // Calculate weighted days for DSO
+      let daysInBucket = 0;
+      switch (bucket.agingBucket) {
+        case 'CURRENT':
+          daysInBucket = 0;
+          break;
+        case 'DAYS_1_30':
+          daysInBucket = 15; // midpoint of 1-30
+          break;
+        case 'DAYS_31_60':
+          daysInBucket = 45; // midpoint of 31-60
+          break;
+        case 'DAYS_61_90':
+          daysInBucket = 75; // midpoint of 61-90
+          break;
+        case 'DAYS_91_PLUS':
+          daysInBucket = 105; // estimate for 91+
+          break;
+      }
+      weightedDays += (bucket.amount || 0) * daysInBucket;
+    });
+
+    // Calculate DSO
+    const daysOutstanding = totalReceivables > 0 ? (weightedDays / totalReceivables) : 0;
+
+    // Format aging data
+    const agingBuckets = agingData.map((bucket: any) => ({
+      bucket: this.formatAgingBucket(bucket.agingBucket),
+      amount: bucket.amount,
+      percentOfTotal: totalReceivables > 0 ? ((bucket.amount / totalReceivables) * 100) : 0,
+      claimCount: bucket.claimCount,
+    }));
+
+    return {
+      totalReceivables,
+      agingBuckets,
+      daysOutstanding,
+    };
+  }
+
+  // Validation methods for report parameters
+  public validateReportParameters(parameters: ReportParameters): string[] {
+    const errors: string[] = [];
+
+    // Validate date range when timeFrame is CUSTOM
+    if (parameters.timeFrame === 'CUSTOM' && parameters.dateRange) {
+      if (!parameters.dateRange.startDate) {
+        errors.push('Start date is required when using custom time frame');
+      }
+      if (!parameters.dateRange.endDate) {
+        errors.push('End date is required when using custom time frame');
+      }
+      if (parameters.dateRange.startDate && parameters.dateRange.endDate) {
+        const start = new Date(parameters.dateRange.startDate);
+        const end = new Date(parameters.dateRange.endDate);
+        if (isNaN(start.getTime())) {
+          errors.push('Invalid start date format');
+        }
+        if (isNaN(end.getTime())) {
+          errors.push('Invalid end date format');
+        }
+        if (start > end) {
+          errors.push('Start date must be before end date');
+        }
+      }
+    }
+
+    // Validate comparison date range when comparison type is not NONE
+    if (parameters.comparisonType !== 'NONE' && parameters.comparisonDateRange) {
+      if (!parameters.comparisonDateRange.startDate) {
+        errors.push('Comparison start date is required when using comparison');
+      }
+      if (!parameters.comparisonDateRange.endDate) {
+        errors.push('Comparison end date is required when using comparison');
+      }
+      if (parameters.comparisonDateRange.startDate && parameters.comparisonDateRange.endDate) {
+        const start = new Date(parameters.comparisonDateRange.startDate);
+        const end = new Date(parameters.comparisonDateRange.endDate);
+        if (isNaN(start.getTime())) {
+          errors.push('Invalid comparison start date format');
+        }
+        if (isNaN(end.getTime())) {
+          errors.push('Invalid comparison end date format');
+        }
+        if (start > end) {
+          errors.push('Comparison start date must be before comparison end date');
+        }
+      }
+    }
+
+    // Validate asOfDate if present
+    if (parameters.asOfDate) {
+      const asOfDate = new Date(parameters.asOfDate);
+      if (isNaN(asOfDate.getTime())) {
+        errors.push('Invalid as-of date format');
+      }
+    }
+
+    // Validate limit
+    if (parameters.limit <= 0) {
+      errors.push('Limit must be greater than zero');
+    }
+
+    return errors;
+  }
+
+  // Validate scheduling parameters
+  private validateScheduleParameters(request: ScheduleReportRequest): void {
+    const errors: string[] = [];
+    
+    // Validate frequency-specific parameters
+    if (request.frequency === 'WEEKLY' || request.frequency === 'BIWEEKLY') {
+      if (request.dayOfWeek === null || request.dayOfWeek === undefined || request.dayOfWeek < 0 || request.dayOfWeek > 6) {
+        errors.push('Day of week must be between 0 (Sunday) and 6 (Saturday) for weekly or biweekly schedules');
+      }
+    } else if (request.frequency === 'MONTHLY' || request.frequency === 'QUARTERLY' || request.frequency === 'YEARLY') {
+      if (request.dayOfMonth === null || request.dayOfMonth === undefined || request.dayOfMonth < 1 || request.dayOfMonth > 31) {
+        errors.push('Day of month must be between 1 and 31 for monthly, quarterly, or yearly schedules');
+      }
+    }
+    
+    // Validate time format (HH:MM)
+    if (!request.time || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(request.time)) {
+      errors.push('Time must be in 24-hour format (HH:MM)');
+    }
+    
+    // Validate at least one recipient
+    if (!request.recipients || request.recipients.length === 0) {
+      errors.push('At least one recipient is required');
+    }
+    
+    // Validate at least one format
+    if (!request.formats || request.formats.length === 0) {
+      errors.push('At least one export format is required');
+    }
+    
+    if (errors.length > 0) {
+      throw new ReportServiceError(`Invalid schedule parameters: ${errors.join(', ')}`, 400, 'INVALID_SCHEDULE_PARAMETERS');
+    }
+  }
+
+  // Create default report parameters based on report type
+  public createDefaultParameters(reportType: string): ReportParameters {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const defaultParams: ReportParameters = {
+      timeFrame: 'LAST_30_DAYS',
+      dateRange: {
+        startDate: format(thirtyDaysAgo, 'yyyy-MM-dd'),
+        endDate: format(now, 'yyyy-MM-dd')
+      },
+      comparisonType: 'NONE',
+      comparisonDateRange: null,
+      programIds: [],
+      payerIds: [],
+      facilityIds: [],
+      serviceTypeIds: [],
+      asOfDate: format(now, 'yyyy-MM-dd'),
+      groupBy: 'program',
+      sortBy: 'revenue',
+      limit: 10,
+      customParameters: {}
+    };
+
+    // Customize based on report type
+    switch (reportType) {
+      case 'REVENUE_BY_PROGRAM':
+        defaultParams.groupBy = 'program';
+        defaultParams.sortBy = 'revenue';
+        defaultParams.comparisonType = 'PREVIOUS_PERIOD';
+        
+        // Calculate comparison date range (previous 30 days)
+        const prevPeriodStart = new Date(thirtyDaysAgo);
+        prevPeriodStart.setDate(prevPeriodStart.getDate() - 30);
+        const prevPeriodEnd = new Date(thirtyDaysAgo);
+        prevPeriodEnd.setDate(prevPeriodEnd.getDate() - 1);
+        
+        defaultParams.comparisonDateRange = {
+          startDate: format(prevPeriodStart, 'yyyy-MM-dd'),
+          endDate: format(prevPeriodEnd, 'yyyy-MM-dd')
+        };
+        break;
+        
+      case 'CLAIMS_STATUS':
+        defaultParams.groupBy = 'status';
+        defaultParams.sortBy = 'count';
+        break;
+        
+      case 'AGING_ACCOUNTS_RECEIVABLE':
+        defaultParams.timeFrame = 'CUSTOM';
+        defaultParams.dateRange = null;
+        defaultParams.groupBy = 'agingBucket';
+        defaultParams.sortBy = 'amount';
+        break;
+        
+      case 'REVENUE_BY_PAYER':
+        defaultParams.groupBy = 'payer';
+        defaultParams.sortBy = 'revenue';
+        defaultParams.comparisonType = 'PREVIOUS_PERIOD';
+        
+        // Same comparison date range as REVENUE_BY_PROGRAM
+        const prevPayerPeriodStart = new Date(thirtyDaysAgo);
+        prevPayerPeriodStart.setDate(prevPayerPeriodStart.getDate() - 30);
+        const prevPayerPeriodEnd = new Date(thirtyDaysAgo);
+        prevPayerPeriodEnd.setDate(prevPayerPeriodEnd.getDate() - 1);
+        
+        defaultParams.comparisonDateRange = {
+          startDate: format(prevPayerPeriodStart, 'yyyy-MM-dd'),
+          endDate: format(prevPayerPeriodEnd, 'yyyy-MM-dd')
+        };
+        break;
+        
+      default:
+        // Keep default parameters
+        break;
+    }
+
+    return defaultParams;
+  }
+
+  // Helper methods for data formatting
+  public formatAgingBucket(bucket: string): string {
+    const bucketLabels: Record<string, string> = {
+      'CURRENT': 'Current',
+      'DAYS_1_30': '1-30 Days',
+      'DAYS_31_60': '31-60 Days',
+      'DAYS_61_90': '61-90 Days',
+      'DAYS_91_PLUS': '90+ Days'
+    };
+    
+    return bucketLabels[bucket] || bucket;
+  }
+
+  public formatClaimStatus(status: string): string {
+    const statusLabels: Record<string, string> = {
+      'DRAFT': 'Draft',
+      'VALIDATED': 'Validated',
+      'SUBMITTED': 'Submitted',
+      'PENDING': 'Pending',
+      'PAID': 'Paid',
+      'DENIED': 'Denied'
+    };
+    
+    return statusLabels[status] || status;
+  }
+
+  public formatDateForDisplay(dateString: string | null): string {
+    if (!dateString) return '';
+    return format(parseISO(dateString), 'MM/dd/yyyy');
+  }
+
+  public isReportExpired(expiresAt: string | null): boolean {
+    if (!expiresAt) return false;
+    return isAfter(new Date(), parseISO(expiresAt));
+  }
+
+  public getReportStatusLabel(status: 'COMPLETED' | 'GENERATING' | 'FAILED'): string {
+    const statusLabels = {
+      COMPLETED: 'Completed',
+      GENERATING: 'Generating',
+      FAILED: 'Failed'
+    };
+    return statusLabels[status] || status;
+  }
+
+  public formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  }
+
+  public formatPercentage(value: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'percent',
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1
+    }).format(value / 100);
+  }
+
+  public formatNumber(value: number): string {
+    return new Intl.NumberFormat('en-US').format(value);
+  }
+
+  // Visualization data preparation methods
+  public prepareChartData(reportData: ReportDataResponse, visualizationId: string): any {
+    const visualization = reportData.visualizations.find(v => v.id === visualizationId);
+    
+    if (!visualization) {
+      throw new ReportServiceError(`Visualization with ID ${visualizationId} not found`);
+    }
+    
+    const dataKey = visualization.dataKey;
+    const rawData = reportData.data[dataKey];
+    
+    if (!rawData) {
+      throw new ReportServiceError(`Data for key ${dataKey} not found in report data`);
+    }
+    
+    // Process based on chart type
+    switch (visualization.type) {
+      case 'BAR':
+        return this.prepareBarChartData(rawData, visualization);
+      case 'LINE':
+        return this.prepareLineChartData(rawData, visualization);
+      case 'PIE':
+        return this.preparePieChartData(rawData, visualization);
+      case 'AREA':
+        return this.prepareAreaChartData(rawData, visualization);
+      default:
+        return rawData;
+    }
+  }
+
+  // Caching methods
+  private getCachedData<T>(key: string): T | null {
+    const cached = this.cache.get(key);
+    
+    if (!cached) {
+      return null;
+    }
+    
+    const now = Date.now();
+    if (now - cached.timestamp > this.CACHE_TTL) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return cached.data as T;
+  }
+
+  private setCachedData<T>(key: string, data: T): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
+  }
+
+  // Method to clear cache
+  public clearCache(): void {
+    this.cache.clear();
+  }
+
+  // Private helper methods for chart data preparation
+  private prepareBarChartData(data: any[], visualization: Visualization): any {
+    if (!visualization.xAxis || !visualization.yAxis) {
+      return data;
+    }
+    
+    const xKey = visualization.xAxis.key;
+    const series = visualization.series;
+    
+    // Transform data if needed for bar chart
+    return data.map(item => {
+      const result: Record<string, any> = { [xKey]: item[xKey] };
+      
+      series.forEach(s => {
+        result[s.label] = item[s.key];
+      });
+      
+      return result;
+    });
+  }
+
+  private prepareLineChartData(data: any[], visualization: Visualization): any {
+    if (!visualization.xAxis || !visualization.yAxis) {
+      return data;
+    }
+    
+    const xKey = visualization.xAxis.key;
+    const series = visualization.series;
+    
+    // For line charts, we typically want the data in the same format as bar charts
+    return this.prepareBarChartData(data, visualization);
+  }
+
+  private preparePieChartData(data: any[], visualization: Visualization): any {
+    const options = visualization.options || {};
+    const nameKey = options.nameKey || 'name';
+    const valueKey = options.valueKey || 'value';
+    
+    // Transform data for pie chart
+    return data.map(item => ({
+      name: item[nameKey],
+      value: item[valueKey],
+    }));
+  }
+
+  private prepareAreaChartData(data: any[], visualization: Visualization): any {
+    // For area charts, we can use the same format as line charts
+    return this.prepareLineChartData(data, visualization);
+  }
+
+  // Enhanced error handling with logging
+  private handleError(error: any, defaultMessage: string): void {
+    // Log the error
+    console.error(`Report Service Error: ${defaultMessage}`, error);
+    
+    if (axios.isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const errorMessage = error.response?.data?.message || defaultMessage;
+      const errorCode = error.response?.data?.errorCode || 'API_ERROR';
+      
+      // Additional logging for specific error types
+      if (statusCode === 401 || statusCode === 403) {
+        console.error('Authentication/Authorization error in Report Service', { errorCode, statusCode });
+      } else if (statusCode >= 500) {
+        console.error('Server error in Report Service', { errorCode, statusCode, errorMessage });
+      }
+      
+      throw new ReportServiceError(errorMessage, statusCode, errorCode);
+    } else if (error instanceof ReportServiceError) {
+      throw error; // Re-throw if it's already our custom error
+    } else {
+      throw new ReportServiceError(defaultMessage);
+    }
+  }
+}
+
+export default ReportService;
