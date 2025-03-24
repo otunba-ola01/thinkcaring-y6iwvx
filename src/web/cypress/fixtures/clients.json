@@ -1,0 +1,900 @@
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { 
+  Box, 
+  Typography, 
+  Paper, 
+  Tabs, 
+  Tab, 
+  Grid, 
+  Chip, 
+  Button, 
+  Divider,
+  CircularProgress,
+  Alert
+} from '@mui/material';
+import { 
+  PersonOutline, 
+  MedicalInformation, 
+  HomeOutlined, 
+  ContactPhone, 
+  School, 
+  Assignment, 
+  ReceiptLong,
+  Edit, 
+  ArrowBack 
+} from '@mui/icons-material';
+import { format } from 'date-fns'; // v2.30+
+
+// Types
+interface Address {
+  street1: string;
+  street2?: string | null;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+}
+
+interface ContactInfo {
+  email: string;
+  phone: string;
+  alternatePhone?: string | null;
+  fax?: string | null;
+}
+
+interface EmergencyContact {
+  name: string;
+  relationship: string;
+  phone: string;
+  alternatePhone?: string | null;
+  email: string;
+}
+
+interface Program {
+  id: string;
+  programId: string;
+  program: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  startDate: string;
+  endDate?: string | null;
+  status: string;
+  notes?: string;
+}
+
+interface Insurance {
+  id: string;
+  type: string;
+  payerId: string;
+  payer: {
+    id: string;
+    name: string;
+    type: string;
+  };
+  policyNumber: string;
+  groupNumber?: string | null;
+  subscriberName: string;
+  subscriberRelationship: string;
+  effectiveDate: string;
+  terminationDate?: string | null;
+  isPrimary: boolean;
+  status: string;
+}
+
+interface Service {
+  id: string;
+  serviceDate: string;
+  serviceType: string;
+  units: number;
+  amount: number;
+  documentationStatus: string;
+  billingStatus: string;
+}
+
+interface Claim {
+  id: string;
+  claimNumber: string;
+  serviceDate: string;
+  amount: number;
+  status: string;
+  payer: string;
+  denialReason?: string;
+}
+
+interface Authorization {
+  id: string;
+  programId: string;
+  program: string;
+  startDate: string;
+  endDate: string;
+  totalUnits: number;
+  usedUnits: number;
+  remainingUnits: number;
+  status: string;
+}
+
+interface Client {
+  id: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string | null;
+  dateOfBirth: string;
+  gender: string;
+  medicaidId?: string | null;
+  medicareId?: string | null;
+  ssn: string;
+  address: Address;
+  contactInfo: ContactInfo;
+  emergencyContact: EmergencyContact;
+  status: string;
+  programs: Program[];
+  insurances: Insurance[];
+  services?: Service[];
+  claims?: Claim[];
+  authorizations?: Authorization[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const ClientDetails: React.FC = () => {
+  const router = useRouter();
+  const { id } = router.query;
+  const [client, setClient] = useState<Client | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [tabValue, setTabValue] = useState(0);
+
+  useEffect(() => {
+    const fetchClientData = async () => {
+      if (!id) return;
+
+      setLoading(true);
+      try {
+        // In a real application, this would be an API call
+        // For demonstration, we're simulating an API response
+        // Example: const response = await fetch(`/api/clients/${id}`);
+        // const data = await response.json();
+        
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // For demonstration purposes, we'll use mock data similar to the JSON spec
+        const mockClient = {
+          id: 'c1d8c7b6-a5a4-4f3e-9d2c-1b0d9f8e7c6b',
+          firstName: 'John',
+          lastName: 'Smith',
+          middleName: 'Robert',
+          dateOfBirth: '1985-06-15',
+          gender: 'MALE',
+          medicaidId: 'M123456789',
+          medicareId: null,
+          ssn: '123-45-6789',
+          address: {
+            street1: '123 Main Street',
+            street2: 'Apt 4B',
+            city: 'Healthcare City',
+            state: 'CA',
+            zipCode: '90210',
+            country: 'USA'
+          },
+          contactInfo: {
+            email: 'john.smith@example.com',
+            phone: '555-123-4567',
+            alternatePhone: '555-987-6543',
+            fax: null
+          },
+          emergencyContact: {
+            name: 'Mary Smith',
+            relationship: 'Spouse',
+            phone: '555-234-5678',
+            alternatePhone: null,
+            email: 'mary.smith@example.com'
+          },
+          status: 'ACTIVE',
+          programs: [
+            {
+              id: 'cp1d8c7b6-a5a4-4f3e-9d2c-1b0d9f8e7c6b',
+              programId: '550e8400-e29b-41d4-a716-446655440001',
+              program: {
+                id: '550e8400-e29b-41d4-a716-446655440001',
+                name: 'Personal Care',
+                code: 'PC'
+              },
+              startDate: '2023-01-15',
+              endDate: null,
+              status: 'ACTIVE',
+              notes: 'Client requires assistance with daily activities'
+            }
+          ],
+          insurances: [
+            {
+              id: 'ci1d8c7b6-a5a4-4f3e-9d2c-1b0d9f8e7c6b',
+              type: 'MEDICAID',
+              payerId: '550e8400-e29b-41d4-a716-446655440010',
+              payer: {
+                id: '550e8400-e29b-41d4-a716-446655440010',
+                name: 'State Medicaid',
+                type: 'MEDICAID'
+              },
+              policyNumber: 'MCD123456789',
+              groupNumber: null,
+              subscriberName: 'John Smith',
+              subscriberRelationship: 'SELF',
+              effectiveDate: '2023-01-01',
+              terminationDate: null,
+              isPrimary: true,
+              status: 'ACTIVE'
+            }
+          ],
+          services: [
+            {
+              id: 's1d8c7b6-a5a4-4f3e-9d2c-1b0d9f8e7c6b',
+              serviceDate: '2023-05-15',
+              serviceType: 'Personal Care',
+              units: 8.0,
+              amount: 204.0,
+              documentationStatus: 'COMPLETE',
+              billingStatus: 'UNBILLED'
+            },
+            {
+              id: 's2e9d8c7-b6a5-4f3e-9d2c-1b0d9f8e7c6b',
+              serviceDate: '2023-05-16',
+              serviceType: 'Personal Care',
+              units: 8.0,
+              amount: 204.0,
+              documentationStatus: 'INCOMPLETE',
+              billingStatus: 'UNBILLED'
+            }
+          ],
+          claims: [
+            {
+              id: 'cl3f0e1d2-c3b4-4f3e-9d2c-1b0d9f8e7c6b',
+              claimNumber: 'C10043',
+              serviceDate: '2023-05-08',
+              amount: 204.0,
+              status: 'DENIED',
+              payer: 'Medicare',
+              denialReason: 'Service not authorized'
+            }
+          ],
+          authorizations: [
+            {
+              id: 'a1d8c7b6-a5a4-4f3e-9d2c-1b0d9f8e7c6b',
+              programId: '550e8400-e29b-41d4-a716-446655440001',
+              program: 'Personal Care',
+              startDate: '2023-01-15',
+              endDate: '2023-07-15',
+              totalUnits: 240,
+              usedUnits: 185,
+              remainingUnits: 55,
+              status: 'ACTIVE'
+            }
+          ],
+          notes: 'Client is cooperative and responsive to care',
+          createdAt: '2023-01-10T14:30:00Z',
+          updatedAt: '2023-05-15T09:45:00Z'
+        };
+        
+        setClient(mockClient as Client);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching client data:', err);
+        setError('Failed to load client information. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClientData();
+  }, [id]);
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+
+  const handleEditClient = () => {
+    router.push(`/clients/edit/${id}`);
+  };
+
+  const handleBack = () => {
+    router.push('/clients');
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'MM/dd/yyyy');
+    } catch (e) {
+      return 'Invalid date';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toUpperCase()) {
+      case 'ACTIVE':
+        return 'success';
+      case 'INACTIVE':
+        return 'error';
+      case 'PENDING':
+        return 'warning';
+      default:
+        return 'default';
+    }
+  };
+
+  const renderPersonalInfoSection = () => {
+    if (!client) return null;
+    
+    return (
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" component="h2" sx={{ display: 'flex', alignItems: 'center' }}>
+            <PersonOutline sx={{ mr: 1 }} />
+            Personal Information
+          </Typography>
+          <Chip 
+            label={client.status} 
+            color={getStatusColor(client.status) as "success" | "error" | "warning" | "default"}
+            sx={{ textTransform: 'capitalize' }}
+          />
+        </Box>
+        
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary">Full Name</Typography>
+            <Typography variant="body1">
+              {client.firstName} {client.middleName ? client.middleName + ' ' : ''}{client.lastName}
+            </Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary">Date of Birth</Typography>
+            <Typography variant="body1">{formatDate(client.dateOfBirth)} ({calculateAge(client.dateOfBirth)} years)</Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary">Gender</Typography>
+            <Typography variant="body1" sx={{ textTransform: 'capitalize' }}>{client.gender.toLowerCase()}</Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary">SSN</Typography>
+            <Typography variant="body1">{maskSsn(client.ssn)}</Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary">Medicaid ID</Typography>
+            <Typography variant="body1">{client.medicaidId || 'N/A'}</Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary">Medicare ID</Typography>
+            <Typography variant="body1">{client.medicareId || 'N/A'}</Typography>
+          </Grid>
+        </Grid>
+      </Paper>
+    );
+  };
+
+  const renderAddressSection = () => {
+    if (!client) return null;
+    
+    return (
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" component="h2" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <HomeOutlined sx={{ mr: 1 }} />
+          Address
+        </Typography>
+        
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <Typography variant="body1">
+              {client.address.street1}
+              {client.address.street2 && <span>, {client.address.street2}</span>}
+            </Typography>
+            <Typography variant="body1">
+              {client.address.city}, {client.address.state} {client.address.zipCode}
+            </Typography>
+            <Typography variant="body1">{client.address.country}</Typography>
+          </Grid>
+        </Grid>
+      </Paper>
+    );
+  };
+
+  const renderContactSection = () => {
+    if (!client) return null;
+    
+    return (
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" component="h2" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <ContactPhone sx={{ mr: 1 }} />
+          Contact Information
+        </Typography>
+        
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary">Email</Typography>
+            <Typography variant="body1">{client.contactInfo.email}</Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary">Phone</Typography>
+            <Typography variant="body1">{client.contactInfo.phone}</Typography>
+          </Grid>
+          
+          {client.contactInfo.alternatePhone && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2" color="text.secondary">Alternate Phone</Typography>
+              <Typography variant="body1">{client.contactInfo.alternatePhone}</Typography>
+            </Grid>
+          )}
+          
+          {client.contactInfo.fax && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2" color="text.secondary">Fax</Typography>
+              <Typography variant="body1">{client.contactInfo.fax}</Typography>
+            </Grid>
+          )}
+        </Grid>
+        
+        <Divider sx={{ my: 2 }} />
+        
+        <Typography variant="h6" component="h3" sx={{ mb: 2 }}>Emergency Contact</Typography>
+        
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary">Name</Typography>
+            <Typography variant="body1">{client.emergencyContact.name}</Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary">Relationship</Typography>
+            <Typography variant="body1">{client.emergencyContact.relationship}</Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary">Phone</Typography>
+            <Typography variant="body1">{client.emergencyContact.phone}</Typography>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary">Email</Typography>
+            <Typography variant="body1">{client.emergencyContact.email}</Typography>
+          </Grid>
+        </Grid>
+      </Paper>
+    );
+  };
+
+  const renderProgramsSection = () => {
+    if (!client || !client.programs.length) return null;
+    
+    return (
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" component="h2" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <School sx={{ mr: 1 }} />
+          Programs
+        </Typography>
+        
+        {client.programs.map((program) => (
+          <Box key={program.id} sx={{ mb: 2, pb: 2, borderBottom: '1px solid #eee' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="subtitle1">{program.program.name} ({program.program.code})</Typography>
+              <Chip 
+                label={program.status} 
+                color={getStatusColor(program.status) as "success" | "error" | "warning" | "default"}
+                size="small"
+                sx={{ textTransform: 'capitalize' }}
+              />
+            </Box>
+            
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">Start Date</Typography>
+                <Typography variant="body1">{formatDate(program.startDate)}</Typography>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">End Date</Typography>
+                <Typography variant="body1">{program.endDate ? formatDate(program.endDate) : 'Ongoing'}</Typography>
+              </Grid>
+              
+              {program.notes && (
+                <Grid item xs={12}>
+                  <Typography variant="body2" color="text.secondary">Notes</Typography>
+                  <Typography variant="body1">{program.notes}</Typography>
+                </Grid>
+              )}
+            </Grid>
+          </Box>
+        ))}
+      </Paper>
+    );
+  };
+
+  const renderInsuranceSection = () => {
+    if (!client || !client.insurances.length) return null;
+    
+    return (
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" component="h2" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <MedicalInformation sx={{ mr: 1 }} />
+          Insurance
+        </Typography>
+        
+        {client.insurances.map((insurance) => (
+          <Box key={insurance.id} sx={{ mb: 2, pb: 2, borderBottom: '1px solid #eee' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="subtitle1">
+                {insurance.payer.name} 
+                {insurance.isPrimary && <Chip label="Primary" size="small" color="primary" sx={{ ml: 1 }} />}
+              </Typography>
+              <Chip 
+                label={insurance.status} 
+                color={getStatusColor(insurance.status) as "success" | "error" | "warning" | "default"}
+                size="small"
+                sx={{ textTransform: 'capitalize' }}
+              />
+            </Box>
+            
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">Policy Number</Typography>
+                <Typography variant="body1">{insurance.policyNumber}</Typography>
+              </Grid>
+              
+              {insurance.groupNumber && (
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">Group Number</Typography>
+                  <Typography variant="body1">{insurance.groupNumber}</Typography>
+                </Grid>
+              )}
+              
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">Subscriber</Typography>
+                <Typography variant="body1">{insurance.subscriberName} ({insurance.subscriberRelationship})</Typography>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <Typography variant="body2" color="text.secondary">Effective Date</Typography>
+                <Typography variant="body1">{formatDate(insurance.effectiveDate)}</Typography>
+              </Grid>
+              
+              {insurance.terminationDate && (
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">Termination Date</Typography>
+                  <Typography variant="body1">{formatDate(insurance.terminationDate)}</Typography>
+                </Grid>
+              )}
+            </Grid>
+          </Box>
+        ))}
+      </Paper>
+    );
+  };
+
+  const renderServicesTab = () => {
+    if (!client?.services || client.services.length === 0) {
+      return <Alert severity="info">No services found for this client.</Alert>;
+    }
+    
+    return (
+      <Box sx={{ mt: 2 }}>
+        <Paper>
+          <Box sx={{ width: '100%', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f5f5f5' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Service Date</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Service Type</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Units</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Amount</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Documentation</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Billing Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {client.services.map((service) => (
+                  <tr key={service.id} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '12px 16px' }}>{formatDate(service.serviceDate)}</td>
+                    <td style={{ padding: '12px 16px' }}>{service.serviceType}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>{service.units}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>${service.amount.toFixed(2)}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <Chip 
+                        label={service.documentationStatus.replace('_', ' ')} 
+                        color={service.documentationStatus === 'COMPLETE' ? 'success' : 'warning'} 
+                        size="small"
+                        sx={{ textTransform: 'capitalize' }}
+                      />
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <Chip 
+                        label={service.billingStatus.replace('_', ' ')} 
+                        color={
+                          service.billingStatus === 'UNBILLED' 
+                            ? 'default' 
+                            : service.billingStatus === 'READY_FOR_BILLING' 
+                              ? 'warning' 
+                              : 'success'
+                        } 
+                        size="small"
+                        sx={{ textTransform: 'capitalize' }}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Box>
+        </Paper>
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button variant="contained" color="primary">Add Service</Button>
+        </Box>
+      </Box>
+    );
+  };
+
+  const renderClaimsTab = () => {
+    if (!client?.claims || client.claims.length === 0) {
+      return <Alert severity="info">No claims found for this client.</Alert>;
+    }
+    
+    return (
+      <Box sx={{ mt: 2 }}>
+        <Paper>
+          <Box sx={{ width: '100%', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f5f5f5' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Claim #</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Service Date</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Amount</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Status</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Payer</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {client.claims.map((claim) => (
+                  <tr key={claim.id} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '12px 16px' }}>{claim.claimNumber}</td>
+                    <td style={{ padding: '12px 16px' }}>{formatDate(claim.serviceDate)}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>${claim.amount.toFixed(2)}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <Chip 
+                        label={claim.status} 
+                        color={
+                          claim.status === 'PAID' 
+                            ? 'success' 
+                            : claim.status === 'DENIED' 
+                              ? 'error' 
+                              : claim.status === 'PENDING' 
+                                ? 'warning' 
+                                : 'default'
+                        } 
+                        size="small"
+                        sx={{ textTransform: 'capitalize' }}
+                      />
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>{claim.payer}</td>
+                    <td style={{ padding: '12px 16px' }}>{claim.denialReason || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Box>
+        </Paper>
+      </Box>
+    );
+  };
+
+  const renderAuthorizationsTab = () => {
+    if (!client?.authorizations || client.authorizations.length === 0) {
+      return <Alert severity="info">No authorizations found for this client.</Alert>;
+    }
+    
+    return (
+      <Box sx={{ mt: 2 }}>
+        <Paper>
+          <Box sx={{ width: '100%', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f5f5f5' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Program</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Status</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Start Date</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>End Date</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Total Units</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Used Units</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Remaining</th>
+                </tr>
+              </thead>
+              <tbody>
+                {client.authorizations.map((auth) => (
+                  <tr key={auth.id} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '12px 16px' }}>{auth.program}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <Chip 
+                        label={auth.status} 
+                        color={getStatusColor(auth.status) as "success" | "error" | "warning" | "default"} 
+                        size="small"
+                        sx={{ textTransform: 'capitalize' }}
+                      />
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>{formatDate(auth.startDate)}</td>
+                    <td style={{ padding: '12px 16px' }}>{formatDate(auth.endDate)}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>{auth.totalUnits}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>{auth.usedUnits}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>{auth.remainingUnits}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Box>
+        </Paper>
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button variant="contained" color="primary">Add Authorization</Button>
+        </Box>
+      </Box>
+    );
+  };
+
+  const renderNotesTab = () => {
+    if (!client?.notes) {
+      return <Alert severity="info">No notes found for this client.</Alert>;
+    }
+    
+    return (
+      <Box sx={{ mt: 2 }}>
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="body1">{client.notes}</Typography>
+        </Paper>
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button variant="contained" color="primary">Add Note</Button>
+        </Box>
+      </Box>
+    );
+  };
+
+  const renderActiveTab = () => {
+    switch (tabValue) {
+      case 0:
+        return renderServicesTab();
+      case 1:
+        return renderClaimsTab();
+      case 2:
+        return renderAuthorizationsTab();
+      case 3:
+        return renderNotesTab();
+      default:
+        return null;
+    }
+  };
+
+  // Helper functions
+  const calculateAge = (dateOfBirth: string) => {
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const maskSsn = (ssn: string) => {
+    if (!ssn) return 'N/A';
+    return ssn.replace(/^\d{3}-\d{2}/, 'XXX-XX');
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+        <Button 
+          variant="outlined" 
+          onClick={handleBack} 
+          startIcon={<ArrowBack />}
+          sx={{ mt: 2 }}
+        >
+          Back to Client List
+        </Button>
+      </Box>
+    );
+  }
+
+  if (!client) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="warning">Client not found.</Alert>
+        <Button 
+          variant="outlined" 
+          onClick={handleBack} 
+          startIcon={<ArrowBack />}
+          sx={{ mt: 2 }}
+        >
+          Back to Client List
+        </Button>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Button 
+          variant="outlined" 
+          onClick={handleBack} 
+          startIcon={<ArrowBack />}
+        >
+          Back
+        </Button>
+        <Button 
+          variant="contained" 
+          onClick={handleEditClient} 
+          startIcon={<Edit />}
+        >
+          Edit Client
+        </Button>
+      </Box>
+
+      <Typography variant="h4" component="h1" gutterBottom>
+        {client.firstName} {client.lastName}
+      </Typography>
+
+      <Box sx={{ mb: 4 }}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={8}>
+            {renderPersonalInfoSection()}
+            {renderAddressSection()}
+            {renderContactSection()}
+          </Grid>
+          <Grid item xs={12} md={4}>
+            {renderProgramsSection()}
+            {renderInsuranceSection()}
+          </Grid>
+        </Grid>
+      </Box>
+
+      <Paper sx={{ mb: 4 }}>
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab icon={<Assignment sx={{ mr: 1 }} />} iconPosition="start" label="Services" />
+          <Tab icon={<ReceiptLong sx={{ mr: 1 }} />} iconPosition="start" label="Claims" />
+          <Tab icon={<MedicalInformation sx={{ mr: 1 }} />} iconPosition="start" label="Authorizations" />
+          <Tab icon={<ContactPhone sx={{ mr: 1 }} />} iconPosition="start" label="Notes" />
+        </Tabs>
+        <Box sx={{ p: 2 }}>
+          {renderActiveTab()}
+        </Box>
+      </Paper>
+
+      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
+        <Typography variant="caption" color="text.secondary">
+          Created: {formatDate(client.createdAt)} | Last Updated: {formatDate(client.updatedAt)}
+        </Typography>
+      </Box>
+    </Box>
+  );
+};
+
+export default ClientDetails;
